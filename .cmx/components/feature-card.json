@@ -1,0 +1,24 @@
+{
+  "name": "FeatureCard",
+  "description": "A card component for highlighting features with an icon, title, and description.",
+  "category": "custom",
+  "source": "custom",
+  "propsSchema": {
+    "type": "object",
+    "properties": {
+      "icon": {
+        "type": "string",
+        "description": "Emoji or text icon displayed at the top of the card"
+      },
+      "title": {
+        "type": "string",
+        "description": "Feature title"
+      },
+      "children": {
+        "type": "string",
+        "description": "Feature description (MDX content)"
+      }
+    },
+    "required": ["title", "children"]
+  }
+}

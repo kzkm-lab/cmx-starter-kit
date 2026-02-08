@@ -1,0 +1,21 @@
+# Public アプリのデプロイワークフロー（本番）
+# 手動トリガーのみ
+
+name: Deploy Public (prod)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-public-prod-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    uses: ./.github/workflows/build-and-deploy.yml
+    with:
+      app: public
+      environment: prod
+    secrets:
+      INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+      INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}

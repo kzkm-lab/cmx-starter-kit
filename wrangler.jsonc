@@ -1,0 +1,66 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-website",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2024-12-30",
+  "compatibility_flags": ["nodejs_compat_v2"],
+
+  // Enable logging
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+
+  // Static assets
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  // Self-reference for internal routing
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "my-website"
+    }
+  ],
+
+  // R2 bucket for ISR cache
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "my-website-cache"
+    }
+  ],
+
+  // Environment variables
+  "vars": {
+    "NODE_ENV": "production"
+  },
+
+  // Staging environment
+  "env": {
+    "stg": {
+      "name": "my-website-stg",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1
+      },
+      "services": [
+        {
+          "binding": "WORKER_SELF_REFERENCE",
+          "service": "my-website-stg"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "my-website-cache-stg"
+        }
+      ],
+      "vars": {
+        "NODE_ENV": "staging"
+      }
+    }
+  }
+}

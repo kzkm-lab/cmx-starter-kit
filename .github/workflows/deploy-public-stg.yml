@@ -1,0 +1,22 @@
+# Public アプリのデプロイワークフロー（ステージング）
+# 手動トリガーのみ
+
+name: Deploy Public (stg)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-public-stg-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    uses: ./.github/workflows/build-and-deploy.yml
+    with:
+      app: public
+      environment: stg
+      wrangler_env: stg
+    secrets:
+      INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+      INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
