@@ -9,11 +9,9 @@ on:
       - '.cmx/components/**'
       - '.cmx/scripts/sync-components.js'
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
     paths:
       - '.cmx/components/**'
-  pull_request:
-    types: [closed]
 
 jobs:
   sync:

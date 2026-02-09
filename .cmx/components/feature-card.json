@@ -1,5 +1,6 @@
 {
   "name": "FeatureCard",
+  "displayName": "Feature Card",
   "description": "A card component for highlighting features with an icon, title, and description.",
   "category": "custom",
   "source": "custom",
