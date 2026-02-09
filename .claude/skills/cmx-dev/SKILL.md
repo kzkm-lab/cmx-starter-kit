@@ -208,8 +208,8 @@ generated/cmx/
 │   ├── blog.ts               # getBlogPosts(), getBlogPostDetail()
 │   └── news.ts               # getNewsPosts(), getNewsPostDetail()
 └── data-types/
-    ├── team-members.ts        # TeamMember型, getTeamMembers(), getTeamMember()
-    └── faq.ts                 # Faq型, getFaqs(), getFaq()
+    ├── team-members.ts        # TeamMember型, getTeamMembers(), getTeamMemberById()
+    └── faq.ts                 # Faq型, getFaqs(), getFaqById()
 ```
 
 ### 使い方
@@ -221,9 +221,11 @@ const { items } = await getDataEntries("team-members")
 // items[0].name は unknown
 
 // After（型付き、自動生成）
-import { getTeamMembers } from "./generated/cmx"
+import { getTeamMembers, getTeamMemberById } from "./generated/cmx"
 const { items } = await getTeamMembers()
 // items[0].name は string ✅
+const member = await getTeamMemberById("uuid")
+// member.name は string ✅
 ```
 
 ### スキーマ変更時
