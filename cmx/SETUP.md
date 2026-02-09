@@ -103,10 +103,10 @@ After adding secrets, you should see them listed under "Repository secrets":
 
 ### Create Component Definitions
 
-Create JSON files in `.cmx/components/` to define your custom components:
+Create JSON files in `cmx/components/` to define your custom components:
 
 ```json
-// .cmx/components/feature-card.json
+// cmx/components/feature-card.json
 {
   "name": "FeatureCard",
   "displayName": "Feature Card",
@@ -272,7 +272,7 @@ pnpm sync-components preview/feature-x
 **Problem:** Custom components don't appear in CMX Admin
 
 **Solution:**
-1. Check that component JSON files are in `.cmx/components/`
+1. Check that component JSON files are in `cmx/components/`
 2. Verify the JSON syntax is valid
 3. Run `pnpm sync-components` manually to see detailed error messages
 4. Check that the environment matches (production/staging/preview)

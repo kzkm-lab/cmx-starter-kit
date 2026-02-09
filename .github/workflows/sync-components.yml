@@ -6,12 +6,12 @@ on:
       - main
       - develop
     paths:
-      - '.cmx/components/**'
-      - '.cmx/scripts/sync-components.js'
+      - 'cmx/components/**'
+      - 'cmx/scripts/sync-components.js'
   pull_request:
     types: [opened, synchronize, reopened, closed]
     paths:
-      - '.cmx/components/**'
+      - 'cmx/components/**'
 
 jobs:
   sync:
@@ -41,7 +41,7 @@ jobs:
 
       - name: Sync components
         if: github.event.action != 'closed'
-        run: node .cmx/scripts/sync-components.js
+        run: node cmx/scripts/sync-components.js
         env:
           CMX_API_URL: ${{ secrets.CMX_API_URL }}
           CMX_API_KEY: ${{ secrets.CMX_API_KEY }}

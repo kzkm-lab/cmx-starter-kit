@@ -52,7 +52,7 @@ Open [http://localhost:3000](http://localhost:3000) to see your site.
 
 ### Adding a Custom Component
 
-1. **Create component definition** in `.cmx/components/`:
+1. **Create component definition** in `cmx/components/`:
 
 ```json
 {

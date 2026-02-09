@@ -12,7 +12,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "sync-components": "node .cmx/scripts/sync-components.js"
+    "sync-components": "node cmx/scripts/sync-components.js"
   },
   "dependencies": {
     "cmx-sdk": "^0.1.1",

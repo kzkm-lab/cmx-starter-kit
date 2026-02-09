@@ -3,10 +3,10 @@
 /**
  * Component Sync Script
  *
- * Syncs custom component definitions from .cmx/components/ to CMX Admin API.
+ * Syncs custom component definitions from cmx/components/ to CMX Admin API.
  *
  * Usage:
- *   node .cmx/scripts/sync-components.js [environment]
+ *   node cmx/scripts/sync-components.js [environment]
  *
  * Environment:
  *   - If not specified, uses current git branch to determine environment:
@@ -64,7 +64,7 @@ function getEnvironment() {
 // Read all component definition files
 function readComponentDefinitions(environment) {
   if (!fs.existsSync(COMPONENTS_DIR)) {
-    console.log('No components directory found at .cmx/components/');
+    console.log('No components directory found at cmx/components/');
     return [];
   }
 

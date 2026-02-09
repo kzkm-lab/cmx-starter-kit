@@ -193,8 +193,8 @@ export default function AboutPage() {
 ### 実行
 
 ```bash
-npx cmx-sdk generate                         # デフォルト: generated/cmx/
-npx cmx-sdk generate --output src/generated/cmx  # 出力先を指定
+npx cmx-sdk generate                         # デフォルト: cmx/generated/
+npx cmx-sdk generate --output src/cmx/generated  # 出力先を指定
 ```
 
 **前提:** `.env` に `CMX_API_URL` と `CMX_API_KEY` が設定されていること。
@@ -202,7 +202,7 @@ npx cmx-sdk generate --output src/generated/cmx  # 出力先を指定
 ### 生成されるもの
 
 ```
-generated/cmx/
+cmx/generated/
 ├── index.ts                  # 全エクスポート
 ├── collections/
 │   ├── blog.ts               # getBlogPosts(), getBlogPostDetail()
@@ -221,7 +221,7 @@ const { items } = await getDataEntries("team-members")
 // items[0].name は unknown
 
 // After（型付き、自動生成）
-import { getTeamMembers, getTeamMemberById } from "./generated/cmx"
+import { getTeamMembers, getTeamMemberById } from "./cmx/generated"
 const { items } = await getTeamMembers()
 // items[0].name は string ✅
 const member = await getTeamMemberById("uuid")

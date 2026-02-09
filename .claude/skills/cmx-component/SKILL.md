@@ -12,7 +12,7 @@ description: |
 ## ファイル構成
 
 ```
-.cmx/components/{name}.json       # コンポーネント定義（CMX Admin用）
+cmx/components/{name}.json       # コンポーネント定義（CMX Admin用）
 src/components/custom/{Name}.tsx   # React実装
 src/components/custom/index.ts     # エクスポート一覧
 ```
@@ -28,7 +28,7 @@ src/components/custom/index.ts     # エクスポート一覧
 
 ### 2. JSON定義を作成
 
-`.cmx/components/{kebab-case}.json` に作成。詳細フォーマットは [references/component-schema.md](references/component-schema.md) を参照。
+`cmx/components/{kebab-case}.json` に作成。詳細フォーマットは [references/component-schema.md](references/component-schema.md) を参照。
 
 ```json
 {
@@ -109,7 +109,7 @@ GitHub Actions が push/PR 時に自動同期も行う。
 
 ## チェックリスト
 
-- [ ] `.cmx/components/{name}.json` が正しいフォーマット
+- [ ] `cmx/components/{name}.json` が正しいフォーマット
 - [ ] `src/components/custom/{Name}.tsx` が実装済み
 - [ ] `src/components/custom/index.ts` にエクスポート追加
 - [ ] props の型が JSON定義と TSX実装で一致

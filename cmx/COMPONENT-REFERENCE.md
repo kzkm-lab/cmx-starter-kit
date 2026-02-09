@@ -15,7 +15,7 @@ Complete reference for CMX custom component definitions.
 
 ## Definition Format
 
-Component definitions are JSON files placed in `.cmx/components/`:
+Component definitions are JSON files placed in `cmx/components/`:
 
 ```json
 {
@@ -616,7 +616,7 @@ Here's a complete, well-structured component definition:
 **Solutions:**
 1. Validate JSON syntax
 2. Check all required fields are present
-3. Verify file is in `.cmx/components/` directory
+3. Verify file is in `cmx/components/` directory
 4. Run `pnpm sync-components` to see errors
 
 ### Invalid Schema
