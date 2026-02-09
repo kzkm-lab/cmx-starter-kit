@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "cmx": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "YOUR_CMX_ADMIN_URL/api/mcp",
+        "--header",
+        "Authorization:Bearer YOUR_API_KEY",
+        "--allow-http"
+      ]
+    }
+  }
+}
