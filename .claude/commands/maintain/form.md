@@ -31,14 +31,26 @@ site-config.md のトーンに合わせたラベル・プレースホルダー�
 フォーム定義 JSON を生成し、Admin UI での登録手順を案内:
 - 設定 → フォーム → 新規作成
 
-### Step 3: フロント UI 実装
+### Step 3: コード再生成 & ページ scaffold
 
-**スキル: cmx-form** のテンプレートに従い、クライアントコンポーネントを作成:
+```bash
+npx cmx-sdk generate
+npx cmx-sdk scaffold --only forms:{slug}
+```
+
+生成コードの確認:
+- `cmx/generated/forms/{slug}.ts` — Zod スキーマ + 型定義 + 送信関数
+- `src/app/{slug}/page.tsx` — フォームページ雛形（scaffold）
+- `src/app/{slug}/_components/{slug}-form.tsx` — フォーム Client Component（scaffold）
+
+### Step 4: フォーム UI カスタマイズ
+
+scaffold で生成された雛形をカスタマイズ:
 - フォーム UI（site-config.md のデザイン方針に沿う）
-- バリデーション（Zod スキーマ）
-- 送信処理（`POST /api/v1/public/submissions/{formSlug}`）
-- ハニーポットフィールド（`_hp`）によるスパム対策
-- 送信成功・エラーの UX
+- バリデーションは生成済み Zod スキーマ（`cmx/generated/forms/` 内）を使用
+- 送信処理は生成済み `submit{Name}()` 関数を使用
+- ハニーポットフィールド（`_hp`）は scaffold で自動追加済み
+- 送信成功・エラーの UX をカスタマイズ
 
 ### Step 4: 動作確認
 

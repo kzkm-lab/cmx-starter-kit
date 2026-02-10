@@ -26,17 +26,22 @@ site-config.md のサイト種別に合ったデータ構造を提案。
 
 Admin 側で数件のエントリを作成するよう案内。
 
-### Step 3: コード再生成
+### Step 3: コード再生成 & ページ scaffold
 
 ```bash
 npx cmx-sdk generate
+npx cmx-sdk scaffold --only data-types:{slug}
 ```
 
-### Step 4: ページ実装
+生成コードの確認:
+- `cmx/generated/data-types/{slug}.ts` — 型定義 + 取得関数
+- `src/app/{slug}/page.tsx` — 一覧ページ雛形（scaffold）
 
-**スキル: cmx-dev** のデータ型ページ作成パターンに従い:
+### Step 4: ページカスタマイズ
 
-1. `src/app/{path}/page.tsx` — 一覧ページ（生成済み型付き関数を使用）
+scaffold で生成された雛形の HTML/CSS をカスタマイズ:
+
+1. `src/app/{path}/page.tsx` — 一覧ページのデザイン調整
 2. 必要に応じて詳細ページも作成
 
 site-config.md のデザイン方針に沿ったスタイリングを行う。
