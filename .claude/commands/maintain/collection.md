@@ -20,13 +20,34 @@ argument-hint: [コレクションの用途や名前]
 **スキル: cmx-schema** を使用。
 
 site-config.md のサイト種別・トーンに合ったコレクション設計を提案。
-コレクション JSON を生成し、API 経由で登録する:
+
+**1-1. 既存コレクションの確認**
 
 ```bash
-npx cmx-sdk create-collection --json '{"type":"post","slug":"{slug}","name":"{name}"}'
+npx cmx-sdk list-collections
 ```
 
-または Admin UI の「JSON からインポート」で手動登録も可能。
+既存データと重複がないことを確認する。
+
+**1-2. JSON生成とユーザー確認**
+
+```
+以下のコレクションを作成します:
+
+- 名前: {name}
+- スラッグ: {slug}
+- タイプ: {type}
+
+重複はありません。こちらで登録してもよろしいですか？
+```
+
+**1-3. cmx-sdk で登録**
+
+承認されたら、`cmx-sdk` コマンドで登録:
+
+```bash
+npx cmx-sdk create-collection --json '{"type":"{type}","slug":"{slug}","name":"{name}","description":"{description}"}'
+```
 
 ### Step 2: テストデータ
 

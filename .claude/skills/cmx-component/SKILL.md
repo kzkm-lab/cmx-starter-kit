@@ -98,15 +98,6 @@ export { FeatureCard } from "./FeatureCard"
 
 このファイルで export されたコンポーネントは、MDXレンダリング時に自動的に利用可能になる（`src/lib/mdx/render.tsx` が `import * as customComponents` で読み込む）。
 
-### 5. 同期
-
-```bash
-pnpm sync-components          # ブランチから環境を自動判定
-pnpm sync-components production  # 明示的に環境を指定
-```
-
-GitHub Actions が push/PR 時に自動同期も行う。
-
 ## チェックリスト
 
 - [ ] `cmx/components/{name}.json` が正しいフォーマット

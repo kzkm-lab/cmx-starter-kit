@@ -20,21 +20,44 @@ description: |
 
 ### 2. Admin 側フォーム定義
 
-JSON を生成し、Admin UI での登録手順を案内:
+**2-1. 既存フォームの確認**
 
-```json
-{
-  "slug": "contact",
-  "name": "お問い合わせ",
-  "fields": [
-    { "key": "name", "label": "お名前", "type": "text", "required": true },
-    { "key": "email", "label": "メールアドレス", "type": "email", "required": true },
-    { "key": "message", "label": "メッセージ", "type": "textarea", "required": true }
-  ]
-}
+まず既存のフォーム定義を確認して、重複がないことを確認:
+
+```bash
+npx cmx-sdk list-forms
 ```
 
-登録先: Admin → 設定 → フォーム → 新規作成
+**2-2. JSON生成とユーザー確認**
+
+フォーム定義 JSON を生成し、ユーザーに確認:
+
+```
+以下のフォームを Admin に登録します:
+
+- 名前: {name}
+- スラッグ: {slug}
+- フィールド数: {n}
+
+重複はありません。こちらで登録してもよろしいですか？
+```
+
+**2-3. cmx-sdk で登録**
+
+承認されたら、`cmx-sdk` コマンドで登録:
+
+```bash
+npx cmx-sdk create-form --json '{
+  "slug": "contact",
+  "name": "お問い合わせ",
+  "description": "お問い合わせフォーム",
+  "fields": [
+    {"key": "name", "label": "お名前", "type": "text", "required": true},
+    {"key": "email", "label": "メールアドレス", "type": "email", "required": true},
+    {"key": "message", "label": "メッセージ", "type": "textarea", "required": true}
+  ]
+}'
+```
 
 ### 3. フロント実装
 

@@ -1,7 +1,7 @@
 ---
 name: cmx-schema
 description: |
-  CMXのデータタイプ・コレクションのJSON定義を生成し、cmx-sdk CLI（またはAdmin UI）で登録する。
+  CMXのデータタイプ・コレクションのJSON定義を生成し、Admin API 経由で自動登録する。
   既存サイトのデータ構造をCMXに移行する際のスキーマ変換・定義生成を担う。
   トリガー: 「スキーマを生成」「データタイプのJSON」「コレクションのJSON」「移行用のスキーマ」
   「CMXにインポートするJSON」「データ構造を定義」「サイトを移行」「データタイプを作りたい」
@@ -11,7 +11,7 @@ description: |
 # CMX スキーマ JSON 生成ガイド
 
 既存サイトのデータ構造をCMXに移行するためのJSON定義を生成する。
-生成したJSONは `npx cmx-sdk` コマンド（推奨）または Admin UI の「JSONからインポート」で登録する。
+生成したJSONは、ユーザーに確認後、Admin API 経由で自動登録する。
 
 ## タスク判定
 
@@ -62,34 +62,51 @@ description: |
 
 ## 登録手順
 
-### 方法 1（推奨）: cmx-sdk コマンドで API 経由登録
+### 1. JSON定義の生成
+
+要件に基づいてコレクションまたはデータタイプのJSON定義を生成する。
+
+### 2. 既存データの確認
+
+まず既存のコレクション・データタイプを確認して、重複がないことを確認:
 
 ```bash
-# コレクション単体
-npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ"}'
+npx cmx-sdk list-collections
+npx cmx-sdk list-data-types
+```
 
-# データタイプ単体
-npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","fields":[...]}'
+### 3. ユーザーへの確認
 
-# まとめてインポート（JSON ファイル）
+生成したJSON定義をユーザーに提示し、登録の承認を得る:
+
+```
+以下のスキーマを Admin に登録します:
+
+【コレクション】
+- {name} ({slug}) — type: {type}
+
+【データタイプ】
+- {name} ({slug}) — フィールド数: {n}
+
+重複はありません。こちらで登録してもよろしいですか？
+```
+
+### 4. cmx-sdk で登録
+
+承認されたら、`cmx-sdk` コマンドで登録する。
+
+**コレクションの登録:**
+```bash
+npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ","description":"ブログ記事を管理"}'
+```
+
+**データタイプの登録:**
+```bash
+npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[{"key":"name","label":"名前","type":"text","required":true}]}'
+```
+
+**一括登録（推奨）:**
+schema.json ファイルを作成して一括登録:
+```bash
 npx cmx-sdk import-schema --file schema.json
 ```
-
-import-schema の JSON 形式:
-```json
-{
-  "collections": [
-    { "type": "post", "slug": "blog", "name": "ブログ" }
-  ],
-  "dataTypes": [
-    { "slug": "staff", "name": "スタッフ", "fields": [...] }
-  ]
-}
-```
-
-### 方法 2: Admin UI で手動登録
-
-1. CMX Admin UI を開く
-2. データタイプ: 設定 → データタイプ → 新規作成 → 「JSONからインポート」
-3. コレクション: 設定 → コレクション → 「JSONからインポート」
-4. JSONを貼り付けて「インポート」→ フォームに自動入力 → 確認・編集 → 保存

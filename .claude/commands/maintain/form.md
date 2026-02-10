@@ -28,8 +28,33 @@ site-config.md のトーンに合わせたラベル・プレースホルダー�
 
 ### Step 2: Admin 側フォーム定義
 
-フォーム定義 JSON を生成し、Admin UI での登録手順を案内:
-- 設定 → フォーム → 新規作成
+**2-1. 既存フォームの確認**
+
+```bash
+npx cmx-sdk list-forms
+```
+
+既存データと重複がないことを確認する。
+
+**2-2. JSON生成とユーザー確認**
+
+```
+以下のフォームを作成します:
+
+- 名前: {name}
+- スラッグ: {slug}
+- フィールド数: {n}
+
+重複はありません。こちらで登録してもよろしいですか？
+```
+
+**2-3. cmx-sdk で登録**
+
+承認されたら、`cmx-sdk` コマンドで登録:
+
+```bash
+npx cmx-sdk create-form --json '{"slug":"{slug}","name":"{name}","description":"{description}","fields":[...]}'
+```
 
 ### Step 3: コード再生成 & ページ scaffold
 

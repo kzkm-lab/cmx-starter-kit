@@ -20,13 +20,34 @@ argument-hint: [データタイプの用途や名前]
 **スキル: cmx-schema** を使用。
 
 site-config.md のサイト種別に合ったデータ構造を提案。
-データタイプ JSON を生成し、API 経由で登録する:
+
+**1-1. 既存データタイプの確認**
 
 ```bash
-npx cmx-sdk create-data-type --json '{"slug":"{slug}","name":"{name}","fields":[...]}'
+npx cmx-sdk list-data-types
 ```
 
-または Admin UI の「JSON からインポート」で手動登録も可能。
+既存データと重複がないことを確認する。
+
+**1-2. JSON生成とユーザー確認**
+
+```
+以下のデータタイプを作成します:
+
+- 名前: {name}
+- スラッグ: {slug}
+- フィールド数: {n}
+
+重複はありません。こちらで登録してもよろしいですか？
+```
+
+**1-3. cmx-sdk で登録**
+
+承認されたら、`cmx-sdk` コマンドで登録:
+
+```bash
+npx cmx-sdk create-data-type --json '{"slug":"{slug}","name":"{name}","description":"{description}","fields":[...]}'
+```
 
 ### Step 2: テストデータ
 

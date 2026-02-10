@@ -39,39 +39,53 @@ cmx-schema スキルに従い、各コンテンツ種別の JSON を生成する
 
 ### 4. スキーマ登録
 
-生成した JSON を `npx cmx-sdk` コマンドで API 経由で登録する。
+生成した JSON を cmx-sdk CLI 経由で登録する。
 
-**方法 1（推奨）: import-schema でまとめて登録**
+**4-1. 既存データの確認**
 
-コレクションとデータタイプをまとめた JSON ファイルを作成し、一括登録:
+まず既存のコレクション・データタイプを確認:
 
+```bash
+npx cmx-sdk list-collections
+npx cmx-sdk list-data-types
+```
+
+既存データと重複がないことを確認する。
+
+**4-2. 登録の確認**
+
+ユーザーに確認:
+
+```
+以下のスキーマを Admin に登録します:
+
+【コレクション】
+- {name} ({slug}) — type: {type}
+
+【データタイプ】
+- {name} ({slug}) — フィールド数: {n}
+
+重複はありません。こちらで登録してもよろしいですか？
+```
+
+**4-3. cmx-sdk で登録**
+
+承認されたら、`cmx-sdk` コマンドで登録する。
+
+コレクションの登録:
+```bash
+npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ","description":"ブログ記事"}'
+```
+
+データタイプの登録:
+```bash
+npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[...]}'
+```
+
+または、schema.json ファイルを作成して一括登録:
 ```bash
 npx cmx-sdk import-schema --file schema.json
 ```
-
-schema.json の形式:
-```json
-{
-  "collections": [
-    { "type": "post", "slug": "blog", "name": "ブログ" }
-  ],
-  "dataTypes": [
-    { "slug": "staff", "name": "スタッフ", "fields": [...] }
-  ]
-}
-```
-
-**方法 2: 個別に登録**
-
-```bash
-npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ"}'
-npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","fields":[...]}'
-```
-
-**方法 3: Admin UI で手動登録**
-
-- コレクション: コレクション管理画面 → 「JSON からインポート」
-- データタイプ: 設定 → データタイプ → 新規作成 → 「JSON からインポート」
 
 ### 5. COLLECTION_SLUGS の更新
 

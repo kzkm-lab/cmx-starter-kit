@@ -4,15 +4,14 @@
   "private": true,
   "description": "CMX Starter Kit - A Next.js template for building content-driven websites with CMX",
   "scripts": {
-    "dev": "next dev --turbopack --port 3000",
+    "dev": "next dev --turbopack --port 4000",
     "build": "next build",
     "build:cf": "opennextjs-cloudflare build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
-    "sync-components": "node cmx/scripts/sync-components.js"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "cmx-sdk": "^0.1.2",
