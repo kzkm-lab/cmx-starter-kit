@@ -10,7 +10,7 @@ export {
   getDataEntry,
   getPreviewByToken,
   CACHE_TAGS,
-  publicFetchWithTags,
+  sdkFetchWithTags,
 } from "cmx-sdk"
 
 export type {

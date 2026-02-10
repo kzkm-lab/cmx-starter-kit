@@ -15,12 +15,18 @@ argument-hint: [コレクションの用途や名前]
 
 入力: $ARGUMENTS
 
-### Step 1: スキーマ定義
+### Step 1: スキーマ定義 & 登録
 
 **スキル: cmx-schema** を使用。
 
 site-config.md のサイト種別・トーンに合ったコレクション設計を提案。
-コレクション JSON を生成し、Admin UI の「JSON からインポート」手順を案内する。
+コレクション JSON を生成し、API 経由で登録する:
+
+```bash
+npx cmx-sdk create-collection --json '{"type":"post","slug":"{slug}","name":"{name}"}'
+```
+
+または Admin UI の「JSON からインポート」で手動登録も可能。
 
 ### Step 2: テストデータ
 

@@ -49,7 +49,7 @@ export function ContactForm() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_CMX_API_URL}/api/v1/public/submissions/contact`,
+        `${process.env.NEXT_PUBLIC_CMX_API_URL}/api/v1/sdk/submissions/contact`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

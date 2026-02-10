@@ -37,9 +37,39 @@ AGENTS.md の判断基準に従う:
 
 cmx-schema スキルに従い、各コンテンツ種別の JSON を生成する。
 
-### 4. Admin UI へのインポート案内
+### 4. スキーマ登録
 
-生成した JSON をユーザーに提示し、Admin でのインポート手順を案内:
+生成した JSON を `npx cmx-sdk` コマンドで API 経由で登録する。
+
+**方法 1（推奨）: import-schema でまとめて登録**
+
+コレクションとデータタイプをまとめた JSON ファイルを作成し、一括登録:
+
+```bash
+npx cmx-sdk import-schema --file schema.json
+```
+
+schema.json の形式:
+```json
+{
+  "collections": [
+    { "type": "post", "slug": "blog", "name": "ブログ" }
+  ],
+  "dataTypes": [
+    { "slug": "staff", "name": "スタッフ", "fields": [...] }
+  ]
+}
+```
+
+**方法 2: 個別に登録**
+
+```bash
+npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ"}'
+npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","fields":[...]}'
+```
+
+**方法 3: Admin UI で手動登録**
+
 - コレクション: コレクション管理画面 → 「JSON からインポート」
 - データタイプ: 設定 → データタイプ → 新規作成 → 「JSON からインポート」
 

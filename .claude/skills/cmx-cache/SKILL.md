@@ -1,7 +1,7 @@
 ---
 name: cmx-cache
 description: |
-  CMX Starter Kit のキャッシュ戦略スキル。force-dynamic → ISR 切り替え、publicFetchWithTags、CACHE_TAGS、リバリデーション設定、Cloudflare R2 キャッシュ。
+  CMX Starter Kit のキャッシュ戦略スキル。force-dynamic → ISR 切り替え、sdkFetchWithTags、CACHE_TAGS、リバリデーション設定、Cloudflare R2 キャッシュ。
   トリガー: 「キャッシュを設定」「ISRに切り替え」「リバリデーションを設定」
   「force-dynamicを外す」「キャッシュタグを設定」「パフォーマンス改善」
   「ページの表示速度を上げたい」「キャッシュ戦略」「R2キャッシュ」
@@ -33,7 +33,7 @@ description: |
 
 ### 2. タグ付き fetch に切り替え
 
-`publicFetchWithTags` を使い、CACHE_TAGS でタグを付与。
+`sdkFetchWithTags` を使い、CACHE_TAGS でタグを付与。
 
 ### 3. リバリデーション API の確認
 

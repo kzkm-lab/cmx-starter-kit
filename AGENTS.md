@@ -75,6 +75,10 @@ pnpm typecheck             # TypeScript 型チェック
 pnpm lint                  # ESLint
 pnpm sync-components       # カスタムコンポーネントを Admin に同期
 npx cmx-sdk generate       # スキーマから型付きコードを自動生成
+npx cmx-sdk create-collection --json '...'  # コレクションを API 経由で作成
+npx cmx-sdk create-data-type --json '...'   # データタイプを API 経由で作成
+npx cmx-sdk create-data-entry --type-slug {slug} --json '...'  # データエントリを作成
+npx cmx-sdk import-schema --file schema.json  # コレクション・データタイプを一括登録
 ```
 
 ---
@@ -132,7 +136,7 @@ cmx/
 1. サイトコンフィグ作成    cmx/site-config.md を作成
 2. 環境セットアップ        .env.local 設定 → pnpm install → pnpm dev
 3. スキーマ設計            コレクション・データタイプの JSON 定義を作成
-                          → Admin UI の「JSON からインポート」で登録
+                          → npx cmx-sdk import-schema で API 経由登録
 4. テストデータ投入        Admin 側でコンテンツを作成し「公開」にする
 5. コード生成              npx cmx-sdk generate で型付き関数を生成
 6. ページ実装              一覧ページ・詳細ページ・静的ページを作成
@@ -146,14 +150,14 @@ cmx/
 
 | やりたいこと | 作業内容 |
 |------------|---------|
-| コレクション追加 | スキーマJSON作成 → Admin登録 → `npx cmx-sdk generate` → 一覧+詳細ページ作成 → Header追加 |
-| データタイプ追加 | スキーマJSON作成 → Admin登録 → `npx cmx-sdk generate` → 一覧ページ作成 |
+| コレクション追加 | スキーマJSON作成 → `npx cmx-sdk create-collection` → `npx cmx-sdk generate` → 一覧+詳細ページ作成 → Header追加 |
+| データタイプ追加 | スキーマJSON作成 → `npx cmx-sdk create-data-type` → `npx cmx-sdk generate` → 一覧ページ作成 |
 | コンポーネント追加 | `cmx/components/{name}.json` + `src/components/custom/{Name}.tsx` + export追加 → `pnpm sync-components` |
 | フォーム追加 | Admin側フォーム定義 → クライアントコンポーネント作成 → submissions API送信実装 |
 | スタイル変更 | site-config.md 確認 → globals.css / layout コンポーネント修正 → site-config.md 同期 |
 | 静的ページ追加 | `src/app/{path}/page.tsx` 作成 → メタデータ設定 → Header追加 |
 | SEO設定 | sitemap.ts / robots.ts 作成、generateMetadata() カスタマイズ |
-| キャッシュ最適化 | force-dynamic → publicFetchWithTags() + CACHE_TAGS + リバリデーション設定 |
+| キャッシュ最適化 | force-dynamic → sdkFetchWithTags() + CACHE_TAGS + リバリデーション設定 |
 
 ---
 
@@ -334,7 +338,7 @@ GitHub Actions が push/PR 時にも自動同期する。
 
 ## スキーマ JSON フォーマット
 
-Admin UI の「JSON からインポート」で使用するフォーマット。
+`npx cmx-sdk` コマンド（推奨）または Admin UI の「JSON からインポート」で使用するフォーマット。
 
 ### コレクション
 

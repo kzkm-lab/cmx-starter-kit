@@ -32,13 +32,13 @@ export default async function BlogPage() {
 
 ```tsx
 // src/app/blog/page.tsx
-import { CACHE_TAGS, publicFetchWithTags } from "@/lib/api/admin-client"
+import { CACHE_TAGS, sdkFetchWithTags } from "@/lib/api/admin-client"
 
 export const revalidate = 3600 // 1時間
 
 export default async function BlogPage() {
-  const data = await publicFetchWithTags<CollectionPostsResponse>(
-    `/public/collections/blog/posts`,
+  const data = await sdkFetchWithTags<CollectionPostsResponse>(
+    `/sdk/collections/blog/posts`,
     [CACHE_TAGS.collections, CACHE_TAGS.collection("blog")],
     3600
   )
@@ -50,14 +50,14 @@ export default async function BlogPage() {
 
 ```tsx
 // src/app/blog/[slug]/page.tsx
-import { CACHE_TAGS, publicFetchWithTags } from "@/lib/api/admin-client"
+import { CACHE_TAGS, sdkFetchWithTags } from "@/lib/api/admin-client"
 
 export const revalidate = 3600
 
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params
-  const data = await publicFetchWithTags<CollectionPostDetailResponse>(
-    `/public/collections/blog/posts/${slug}`,
+  const data = await sdkFetchWithTags<CollectionPostDetailResponse>(
+    `/sdk/collections/blog/posts/${slug}`,
     [CACHE_TAGS.collection("blog"), CACHE_TAGS.post("blog", slug)],
     3600
   )

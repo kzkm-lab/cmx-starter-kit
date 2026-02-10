@@ -1,7 +1,7 @@
 ---
 name: cmx-schema
 description: |
-  CMXのデータタイプ・コレクションのJSON定義を生成し、Admin UIの「JSONからインポート」で読み込む。
+  CMXのデータタイプ・コレクションのJSON定義を生成し、cmx-sdk CLI（またはAdmin UI）で登録する。
   既存サイトのデータ構造をCMXに移行する際のスキーマ変換・定義生成を担う。
   トリガー: 「スキーマを生成」「データタイプのJSON」「コレクションのJSON」「移行用のスキーマ」
   「CMXにインポートするJSON」「データ構造を定義」「サイトを移行」「データタイプを作りたい」
@@ -11,7 +11,7 @@ description: |
 # CMX スキーマ JSON 生成ガイド
 
 既存サイトのデータ構造をCMXに移行するためのJSON定義を生成する。
-生成したJSONは、CMX Admin UIの「JSONからインポート」機能で読み込む。
+生成したJSONは `npx cmx-sdk` コマンド（推奨）または Admin UI の「JSONからインポート」で登録する。
 
 ## タスク判定
 
@@ -60,10 +60,36 @@ description: |
 | `doc` | ドキュメント（ツリー構造、マニュアル） |
 | `news` | ニュース、お知らせ |
 
-## インポート手順
+## 登録手順
 
-1. JSON定義を生成してユーザーに出力
-2. CMX Admin UI を開く
-3. データタイプ: 設定 → データタイプ → 新規作成 → 「JSONからインポート」
-4. コレクション: 設定 → コレクション → 「JSONからインポート」
-5. JSONを貼り付けて「インポート」→ フォームに自動入力 → 確認・編集 → 保存
+### 方法 1（推奨）: cmx-sdk コマンドで API 経由登録
+
+```bash
+# コレクション単体
+npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ"}'
+
+# データタイプ単体
+npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","fields":[...]}'
+
+# まとめてインポート（JSON ファイル）
+npx cmx-sdk import-schema --file schema.json
+```
+
+import-schema の JSON 形式:
+```json
+{
+  "collections": [
+    { "type": "post", "slug": "blog", "name": "ブログ" }
+  ],
+  "dataTypes": [
+    { "slug": "staff", "name": "スタッフ", "fields": [...] }
+  ]
+}
+```
+
+### 方法 2: Admin UI で手動登録
+
+1. CMX Admin UI を開く
+2. データタイプ: 設定 → データタイプ → 新規作成 → 「JSONからインポート」
+3. コレクション: 設定 → コレクション → 「JSONからインポート」
+4. JSONを貼り付けて「インポート」→ フォームに自動入力 → 確認・編集 → 保存

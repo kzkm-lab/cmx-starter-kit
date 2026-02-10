@@ -245,7 +245,7 @@ The blog is already set up with CMX:
 
 ```tsx
 // src/app/blog/page.tsx
-import { getCollectionPosts } from '@cmx/api-client/public'
+import { getCollectionPosts } from '@cmx/api-client/sdk'
 
 export default async function BlogPage() {
   const posts = await getCollectionPosts('blog')
@@ -324,7 +324,7 @@ Use the type-safe API client:
 import {
   getCollectionPosts,
   getCollectionPost,
-} from '@cmx/api-client/public'
+} from '@cmx/api-client/sdk'
 
 // List posts
 const posts = await getCollectionPosts('blog', {
@@ -428,7 +428,7 @@ Generate a sitemap:
 ```tsx
 // src/app/sitemap.ts
 import { MetadataRoute } from 'next'
-import { getCollectionPosts } from '@cmx/api-client/public'
+import { getCollectionPosts } from '@cmx/api-client/sdk'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const posts = await getCollectionPosts('blog')

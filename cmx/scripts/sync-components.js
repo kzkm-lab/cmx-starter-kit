@@ -3,7 +3,7 @@
 /**
  * Component Sync Script
  *
- * Syncs custom component definitions from cmx/components/ to CMX Admin API.
+ * Syncs custom component definitions from cmx/components/ to CMX SDK API.
  *
  * Usage:
  *   node cmx/scripts/sync-components.js [environment]
@@ -107,7 +107,7 @@ function readComponentDefinitions(environment) {
   return components;
 }
 
-// Sync components to CMX Admin API
+// Sync components to CMX SDK API
 async function syncComponents(components, environment) {
   if (!API_URL || !API_KEY) {
     console.error('❌ CMX_API_URL and CMX_API_KEY environment variables are required');
@@ -117,7 +117,7 @@ async function syncComponents(components, environment) {
   console.log(`🔄 Syncing ${components.length} components to ${environment}...`);
 
   try {
-    const response = await fetch(`${API_URL}/api/v1/admin/custom-components/sync`, {
+    const response = await fetch(`${API_URL}/api/v1/sdk/manage/components/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

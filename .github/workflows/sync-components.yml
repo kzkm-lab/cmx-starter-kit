@@ -57,7 +57,7 @@ jobs:
           curl -X DELETE \
             -H "Authorization: Bearer ${{ secrets.CMX_API_KEY }}" \
             -H "Content-Type: application/json" \
-            "${{ secrets.CMX_API_URL }}/api/v1/admin/custom-components/environments/${ENVIRONMENT}"
+            "${{ secrets.CMX_API_URL }}/api/v1/sdk/manage/components/environments/${ENVIRONMENT}"
 
           echo "✅ Cleanup complete"
 

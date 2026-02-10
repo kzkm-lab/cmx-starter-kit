@@ -46,13 +46,13 @@ JSON を生成し、Admin UI での登録手順を案内:
 - `useState` でフォーム状態・送信状態・エラーを管理
 - Zod スキーマでクライアントバリデーション
 - ハニーポットフィールド（`_hp`）を隠しフィールドとして設置
-- `POST /api/v1/public/submissions/{formSlug}` に送信
+- `POST /api/v1/sdk/submissions/{formSlug}` に送信
 - 送信は `cmx-sdk` の関数 or 直接 fetch（APIキーは不要、公開エンドポイント）
 
 ### 4. 送信処理
 
 ```tsx
-const response = await fetch(`${process.env.NEXT_PUBLIC_CMX_API_URL}/api/v1/public/submissions/${formSlug}`, {
+const response = await fetch(`${process.env.NEXT_PUBLIC_CMX_API_URL}/api/v1/sdk/submissions/${formSlug}`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ ...formData, _hp: honeypotValue }),
