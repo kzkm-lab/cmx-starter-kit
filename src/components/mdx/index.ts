@@ -1,4 +1,4 @@
-// Re-export from SDK
+// Re-export from @cmx/mdx
 export {
   BlogCard,
   Image,
@@ -6,4 +6,4 @@ export {
   Embed,
   Button,
   mdxComponents,
-} from "cmx-sdk"
+} from "@cmx/mdx"
