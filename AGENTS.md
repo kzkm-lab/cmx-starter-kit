@@ -78,7 +78,6 @@ npx cmx-sdk generate       # スキーマから型付きコードを自動生成
 npx cmx-sdk create-collection --json '...'  # コレクションを API 経由で作成
 npx cmx-sdk create-data-type --json '...'   # データタイプを API 経由で作成
 npx cmx-sdk create-data-entry --type-slug {slug} --json '...'  # データエントリを作成
-npx cmx-sdk import-schema --file schema.json  # コレクション・データタイプを一括登録
 ```
 
 ---
@@ -136,7 +135,7 @@ cmx/
 1. サイトコンフィグ作成    cmx/site-config.md を作成
 2. 環境セットアップ        .env.local 設定 → pnpm install → pnpm dev
 3. スキーマ設計            コレクション・データタイプの JSON 定義を作成
-                          → npx cmx-sdk import-schema で API 経由登録
+                          → create-collection / create-data-type コマンドで登録
 4. テストデータ投入        Admin 側でコンテンツを作成し「公開」にする
 5. コード生成              npx cmx-sdk generate で型付き関数を生成
 6. ページ実装              一覧ページ・詳細ページ・静的ページを作成

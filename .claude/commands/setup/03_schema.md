@@ -83,11 +83,6 @@ npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブ�
 npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[...]}'
 ```
 
-または、schema.json ファイルを作成して一括登録:
-```bash
-npx cmx-sdk import-schema --file schema.json
-```
-
 ### 5. COLLECTION_SLUGS の更新
 
 コレクションを追加した場合、`src/lib/constants/collections.ts` にスラッグを追加する。

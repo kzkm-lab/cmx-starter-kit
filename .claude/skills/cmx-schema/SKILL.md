@@ -117,8 +117,3 @@ npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブ�
 npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[{"key":"name","label":"名前","type":"text","required":true}]}'
 ```
 
-**一括登録（推奨）:**
-schema.json ファイルを作成して一括登録:
-```bash
-npx cmx-sdk import-schema --file schema.json
-```
