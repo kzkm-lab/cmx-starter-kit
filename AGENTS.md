@@ -78,6 +78,8 @@ npx cmx-sdk generate       # スキーマから型付きコードを自動生成
 npx cmx-sdk create-collection --json '...'  # コレクションを API 経由で作成
 npx cmx-sdk create-data-type --json '...'   # データタイプを API 経由で作成
 npx cmx-sdk create-data-entry --type-slug {slug} --json '...'  # データエントリを作成
+npx cmx-sdk list-collection-data-types --collection {slug}    # コレクションの付属データタイプ一覧
+npx cmx-sdk list-collection-presets --type {type}             # プリセット一覧（おすすめ/その他）
 ```
 
 ---
@@ -149,8 +151,9 @@ cmx/
 
 | やりたいこと | 作業内容 |
 |------------|---------|
-| コレクション追加 | スキーマJSON作成 → `npx cmx-sdk create-collection` → `npx cmx-sdk generate` → 一覧+詳細ページ作成 → Header追加 |
-| データタイプ追加 | スキーマJSON作成 → `npx cmx-sdk create-data-type` → `npx cmx-sdk generate` → 一覧ページ作成 |
+| コレクション追加 | スキーマJSON作成 → `npx cmx-sdk create-collection`（プリセット自動適用）→ `npx cmx-sdk generate` → 一覧+詳細ページ作成 → Header追加 |
+| データタイプ追加（グローバル） | スキーマJSON作成 → `npx cmx-sdk create-data-type` → `npx cmx-sdk generate` → 一覧ページ作成 |
+| コレクションにデータタイプ追加 | Admin API `POST /collections/:slug/data-types` → エントリ作成 → コンテンツに参照設定 |
 | コンポーネント追加 | `cmx/components/{name}.json` + `src/components/custom/{Name}.tsx` + export追加 → `pnpm sync-components` |
 | フォーム追加 | Admin側フォーム定義 → クライアントコンポーネント作成 → submissions API送信実装 |
 | スタイル変更 | site-config.md 確認 → globals.css / layout コンポーネント修正 → site-config.md 同期 |
@@ -168,6 +171,24 @@ CMX には「コレクション」と「データタイプ」の2種類がある
 |------|------|
 | MDX 本文（記事・ページ）を持つ | **コレクション** |
 | 構造化フィールドのみ（一覧表示用） | **データタイプ** |
+
+### コレクション付属データタイプ（カテゴリ・タグ等）
+
+コレクションには**付属データタイプ**を紐づけることができる。これはコレクション内のコンテンツを分類するための仕組み。
+
+- **グローバルデータタイプ**: コレクションに紐づかない（スタッフ、FAQ等）
+- **コレクション付属データタイプ**: 特定コレクションに紐づく（カテゴリ、タグ、著者等）
+
+コレクション作成時に CollectionType に応じた**おすすめプリセット**が自動提案される:
+
+| CollectionType | おすすめプリセット |
+|---------------|------------------|
+| `post` | カテゴリ（単一選択）、タグ（複数選択）、著者、連載 |
+| `news` | カテゴリ（単一選択） |
+| `doc` | なし |
+| `page` | なし |
+
+コンテンツからデータタイプエントリへの参照は `content_data_references` テーブルで管理される。
 
 ### コレクションの type 選択
 

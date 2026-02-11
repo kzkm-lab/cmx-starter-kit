@@ -52,6 +52,57 @@ About ページ等があれば 1 件。
 
 ドキュメントがあれば 1 件。親子構造の確認用。
 
+## コレクション付属データタイプのテストデータ
+
+コレクションに付属データタイプがある場合、コンテンツ投入前にエントリを作成し、参照を設定する。
+
+### フロー
+
+```
+1. コレクションの付属データタイプ一覧を取得
+2. 各データタイプにテストエントリを作成（カテゴリ2-3件、タグ3-5件）
+3. コンテンツ作成
+4. コンテンツに参照を設定（PUT /contents/:id/references）
+5. 表示確認
+```
+
+### カテゴリ例
+
+```bash
+npx cmx-sdk create-data-entry --type-slug blog-categories --json '{"name":"技術","description":"テック系の記事"}'
+npx cmx-sdk create-data-entry --type-slug blog-categories --json '{"name":"デザイン","description":"デザイン系の記事"}'
+npx cmx-sdk create-data-entry --type-slug blog-categories --json '{"name":"ビジネス","description":"ビジネス系の記事"}'
+```
+
+### タグ例
+
+```bash
+npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"Next.js"}'
+npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"TypeScript"}'
+npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"React"}'
+npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"CSS"}'
+```
+
+### 参照設定例
+
+テスト記事にカテゴリ1つ + タグ2つを設定:
+
+```typescript
+await fetch(`${CMX_API_URL}/api/v1/admin/contents/${contentId}/references`, {
+  method: "PUT",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${CMX_API_KEY}`,
+  },
+  body: JSON.stringify({
+    references: [
+      { fieldSlug: "categories", dataEntryIds: [categoryId] },
+      { fieldSlug: "tags", dataEntryIds: [tagId1, tagId2] },
+    ],
+  }),
+})
+```
+
 ## slug の命名規則
 
 テストデータは `test-` プレフィックスを付けると後で判別しやすい:

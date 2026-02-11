@@ -47,30 +47,39 @@ description: |
   "type": "post",
   "slug": "英数字-ハイフン",
   "name": "表示名",
-  "description": "説明（任意）"
+  "description": "説明（任意）",
+  "dataTypes": ["categories", "tags"]
 }
 ```
 
 `type` の選択:
 
-| type | 用途 | フロントマターフィールド |
-|------|------|------------------------|
-| `post` | ブログ、コラム（時系列コンテンツ） | title, description, **category**, **tags**, published_at, locale |
-| `page` | 固定ページ（会社概要、サービス紹介） | title, description, locale |
-| `doc` | ドキュメント（ツリー構造、マニュアル） | title, description, order, locale |
-| `news` | ニュース、お知らせ | title, description, published_at, expires_at, important, locale |
+| type | 用途 | おすすめデータタイプ | フロントマターフィールド |
+|------|------|---------------------|------------------------|
+| `post` | ブログ、コラム（時系列コンテンツ） | カテゴリ、タグ、著者、連載 | title, description, published_at, locale |
+| `page` | 固定ページ（会社概要、サービス紹介） | なし | title, description, locale |
+| `doc` | ドキュメント（ツリー構造、マニュアル） | なし | title, description, order, locale |
+| `news` | ニュース、お知らせ | カテゴリ | title, description, published_at, expires_at, important, locale |
 
-**重要**: コレクション type によってフロントマターで使用可能なフィールドが決まります。`post` の場合、`category`（文字列）と `tags`（文字列配列）を直接フロントマターに記述できます。これらを別途データタイプとして定義する必要はありません。
+### 付属データタイプ（プリセット）
 
-フロントマター例（post）:
-```markdown
----
-title: 記事タイトル
-description: 説明文
-category: "技術ブログ"
-tags: ["Next.js", "TypeScript"]
----
+コレクション作成時に `dataTypes` フィールドでプリセットslugの配列を指定すると、対応するデータタイプが自動作成される。省略時はそのCollectionTypeのデフォルトプリセットが適用される。
+
+利用可能なプリセット:
+
+| slug | 名前 | 選択方式 | デフォルト（post） | デフォルト（news） |
+|------|------|---------|-----------------|-----------------|
+| `categories` | カテゴリ | 単一選択 | ✅ | ✅ |
+| `tags` | タグ | 複数選択 | ✅ | - |
+| `authors` | 著者 | 単一選択 | - | - |
+| `series` | 連載 | 単一選択 | - | - |
+
+プリセット一覧を確認:
+```bash
+npx cmx-sdk list-collection-presets --type post
 ```
+
+データタイプ不要（`doc`, `page` 等）の場合は空配列 `"dataTypes": []` を指定。
 
 ## 登録手順
 
@@ -107,12 +116,23 @@ npx cmx-sdk list-data-types
 
 承認されたら、`cmx-sdk` コマンドで登録する。
 
-**コレクションの登録:**
+**コレクションの登録（プリセットデータタイプ付き）:**
 ```bash
-npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ","description":"ブログ記事を管理"}'
+npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ","description":"ブログ記事を管理","dataTypes":["categories","tags"]}'
 ```
 
-**データタイプの登録:**
+コレクション作成時にプリセットが自動適用され、`blog-categories`、`blog-tags` などのデータタイプが自動作成される。
+
+**コレクションの付属データタイプを後から追加:**
+```bash
+# プリセットから追加
+npx cmx-sdk add-collection-data-type --collection blog --preset authors
+
+# カスタムで追加
+npx cmx-sdk add-collection-data-type --collection blog --json '{"slug":"custom-field","name":"カスタム","referenceType":"single","fields":[{"key":"name","label":"名前","type":"text","required":true}]}'
+```
+
+**グローバルデータタイプの登録:**
 ```bash
 npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[{"key":"name","label":"名前","type":"text","required":true}]}'
 ```

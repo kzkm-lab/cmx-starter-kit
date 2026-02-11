@@ -67,6 +67,46 @@ const { collections } = await res.json()
 // collections[].id でコレクションUUIDを取得
 ```
 
+## コレクション付属データタイプのテストデータ
+
+コレクションに付属データタイプ（カテゴリ・タグ等）がある場合、エントリ作成→コンテンツへの参照設定が必要。
+
+### 1. 付属データタイプのエントリ作成
+
+```bash
+# コレクションの付属データタイプを確認
+npx cmx-sdk list-collection-data-types --collection blog
+
+# カテゴリエントリを作成
+npx cmx-sdk create-data-entry --type-slug blog-categories --json '{"name":"技術ブログ","description":"テック系の記事"}'
+npx cmx-sdk create-data-entry --type-slug blog-categories --json '{"name":"デザイン","description":"デザイン系の記事"}'
+
+# タグエントリを作成
+npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"Next.js"}'
+npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"TypeScript"}'
+```
+
+### 2. コンテンツに参照を設定
+
+コンテンツ作成後、Admin API で参照を設定:
+
+```typescript
+// PUT /api/v1/admin/contents/{contentId}/references
+await fetch(`${CMX_API_URL}/api/v1/admin/contents/${contentId}/references`, {
+  method: "PUT",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${CMX_API_KEY}`,
+  },
+  body: JSON.stringify({
+    references: [
+      { fieldSlug: "categories", dataEntryIds: ["カテゴリエントリのUUID"] },
+      { fieldSlug: "tags", dataEntryIds: ["タグ1のUUID", "タグ2のUUID"] },
+    ],
+  }),
+})
+```
+
 ## 変更後
 
 1. Admin の投稿一覧で記事が作成されていることを確認

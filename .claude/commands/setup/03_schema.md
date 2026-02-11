@@ -31,8 +31,9 @@ cmx-schema スキルを読み込み、そのガイドに従って JSON 定義を
 
 AGENTS.md の判断基準に従う:
 - MDX 本文を持つ → **コレクション**（type: post/page/doc/news）
-  - `post` の場合、フロントマターで category/tags が使用可能（データタイプ不要）
-- 構造化フィールドのみ → **データタイプ**
+  - コレクションには付属データタイプ（カテゴリ・タグ等）を紐づけ可能
+  - CollectionType に応じたおすすめプリセットが自動提案される
+- 構造化フィールドのみ → **グローバルデータタイプ**
 
 ### 3. JSON 定義の生成
 
@@ -73,12 +74,18 @@ npx cmx-sdk list-data-types
 
 承認されたら、`cmx-sdk` コマンドで登録する。
 
-コレクションの登録:
+コレクションの登録（プリセットデータタイプ付き）:
 ```bash
-npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ","description":"ブログ記事"}'
+# dataTypes を指定してプリセットを選択。省略時はデフォルトが適用される
+npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ","description":"ブログ記事","dataTypes":["categories","tags"]}'
 ```
 
-データタイプの登録:
+プリセット一覧の確認:
+```bash
+npx cmx-sdk list-collection-presets --type post
+```
+
+グローバルデータタイプの登録:
 ```bash
 npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[...]}'
 ```

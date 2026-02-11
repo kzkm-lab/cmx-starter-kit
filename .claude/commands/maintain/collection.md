@@ -49,9 +49,32 @@ npx cmx-sdk list-collections
 npx cmx-sdk create-collection --json '{"type":"{type}","slug":"{slug}","name":"{name}","description":"{description}"}'
 ```
 
+**1-4. 付属データタイプの確認**
+
+コレクション作成時にプリセットが自動適用される。追加したい場合:
+
+```bash
+# 現在の付属データタイプを確認
+npx cmx-sdk list-collection-data-types --collection {slug}
+
+# おすすめプリセットを確認
+npx cmx-sdk list-collection-presets --type {type}
+
+# プリセットから追加
+npx cmx-sdk add-collection-data-type --collection {slug} --preset authors
+```
+
 ### Step 2: テストデータ
 
+付属データタイプがある場合はエントリも作成:
+
+```bash
+# カテゴリエントリ作成
+npx cmx-sdk create-data-entry --type-slug {slug}-categories --json '{"name":"カテゴリ名"}'
+```
+
 Admin 側で 2-3 件のコンテンツを作成し「公開」にするよう案内。
+コンテンツ作成後、必要に応じて参照を設定（Admin API `PUT /contents/:id/references`）。
 
 ### Step 3: コード再生成 & ページ scaffold
 

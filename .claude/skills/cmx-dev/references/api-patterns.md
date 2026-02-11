@@ -99,6 +99,51 @@ const { content } = await renderMdx(item.mdx, references)
 
 `renderMdx` は内部で `src/components/custom/index.ts` の全エクスポートを自動注入する。
 
+## コレクション付属データタイプ API
+
+### コレクションのデータタイプ一覧（Admin API）
+
+```
+GET /api/v1/admin/collections/{slug}/data-types
+```
+
+### コレクションにデータタイプを追加（Admin API）
+
+```
+POST /api/v1/admin/collections/{slug}/data-types
+Body: { "presetSlug": "categories" }  // プリセットから追加
+Body: { "slug": "custom", "name": "カスタム", "referenceType": "single", "fields": [...] }  // カスタム
+```
+
+### コレクションからデータタイプを削除（Admin API）
+
+```
+DELETE /api/v1/admin/collections/{slug}/data-types/{dtSlug}
+```
+
+### プリセット一覧（Admin API）
+
+```
+GET /api/v1/admin/collection-presets?type=post
+→ { "recommended": [...], "others": [...] }
+```
+
+### コンテンツの参照取得/設定（Admin API）
+
+```
+GET  /api/v1/admin/contents/{id}/references
+PUT  /api/v1/admin/contents/{id}/references
+Body: { "references": [{ "fieldSlug": "categories", "dataEntryIds": ["uuid"] }] }
+```
+
+### MCP API（AI向け）
+
+```
+GET /api/mcp/collections/{slug}/data-types                    # データタイプ一覧
+GET /api/mcp/collections/{slug}/data-types/{dtSlug}/entries   # エントリ一覧
+GET /api/mcp/collection-presets?type=post                     # プリセット一覧
+```
+
 ## キャッシュタグ
 
 Next.js のオンデマンド再検証用:
