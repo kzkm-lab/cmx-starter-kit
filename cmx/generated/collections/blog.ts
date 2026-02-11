@@ -2,13 +2,13 @@
 // Collection: ブログ (blog)
 // Do not edit manually.
 
-import { getCollectionPosts, getCollectionPostDetail } from "cmx-sdk"
-import type { CollectionPostsResponse, CollectionPostDetailResponse } from "cmx-sdk"
+import { getCollectionContents, getCollectionContentDetail } from "cmx-sdk"
+import type { CollectionContentsResponse, CollectionContentDetailResponse } from "cmx-sdk"
 
-export async function getBlogPosts(): Promise<CollectionPostsResponse> {
-  return getCollectionPosts("blog")
+export async function getBlogContents(): Promise<CollectionContentsResponse> {
+  return getCollectionContents("blog")
 }
 
-export async function getBlogPostDetail(slug: string): Promise<CollectionPostDetailResponse> {
-  return getCollectionPostDetail("blog", slug)
+export async function getBlogContentDetail(slug: string): Promise<CollectionContentDetailResponse> {
+  return getCollectionContentDetail("blog", slug)
 }

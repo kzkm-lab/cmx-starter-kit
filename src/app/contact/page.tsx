@@ -19,7 +19,7 @@ export default async function ContactPage() {
   if (!data) {
     throw new Error("Failed to fetch contact page content from pages/contact")
   }
-  const { content: pageContent } = await renderMdx(data.post.mdx, data.references)
+  const { content: pageContent } = await renderMdx(data.content.mdx, data.references)
 
   return (
     <div className="container mx-auto px-4 py-12">

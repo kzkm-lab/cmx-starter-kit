@@ -11,8 +11,8 @@ export {
   getPreviewByToken,
 } from "cmx-sdk"
 
-// Cache tags and fetch utilities from @cmx/api-client
-export { CACHE_TAGS, sdkFetchWithTags } from "@cmx/api-client/core"
+// Cache tags and fetch utilities
+export { CACHE_TAGS, sdkFetchWithTags } from "cmx-sdk"
 
 export type {
   CollectionContentsResponse,
@@ -20,7 +20,7 @@ export type {
   DataListResponse,
   DataEntryItem,
   PreviewResponse,
-  CollectionInfo,
-  ContentListItem,
-  ContentDetail,
+  PublicCollectionInfo,
+  PublicContentListItem,
+  PublicContentDetail,
 } from "cmx-sdk"

@@ -26,7 +26,7 @@ export default async function AboutPage() {
   if (!data) {
     throw new Error("Failed to fetch about page content from pages/about")
   }
-  const { content: pageContent } = await renderMdx(data.post.mdx, data.references)
+  const { content: pageContent } = await renderMdx(data.content.mdx, data.references)
 
   // チームメンバー取得（失敗時はビルドエラー）
   const teamData = await getDataEntries("team", { limit: 6 })

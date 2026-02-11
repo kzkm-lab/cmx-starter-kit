@@ -5,11 +5,11 @@ import {
 
 // 型はcmx-sdkから再エクスポート
 export type {
-  CollectionInfo,
+  PublicCollectionInfo,
   CollectionContentsResponse as ContentsListResponse,
   CollectionContentDetailResponse as ContentDetailResponse,
-  ContentListItem,
-  ContentDetail,
+  PublicContentListItem,
+  PublicContentDetail,
   ContentReference,
   AssetReference,
   References,
