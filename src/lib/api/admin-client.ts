@@ -19,7 +19,7 @@ export type {
   DataListResponse,
   DataEntryItem,
   PreviewResponse,
-  PublicCollectionInfo as CollectionInfo,
-  PublicPostListItem as PostListItem,
-  PublicPostDetail as PostDetail,
+  CollectionInfo,
+  PostListItem,
+  PostDetail,
 } from "cmx-sdk"
