@@ -2,7 +2,7 @@ import Link from "next/link"
 import { ArrowRight, Sparkles, Zap, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { getCollectionPosts, getDataEntries } from "@/lib/api/admin-client"
+import { getCollectionContents, getDataEntries } from "@/lib/api/admin-client"
 
 // ランタイムでデータを取得（ビルド時はスキップ）
 export const dynamic = "force-dynamic"
@@ -23,11 +23,11 @@ interface ServiceEntry {
 
 export default async function Home() {
   // 最新ニュース取得（失敗時はビルドエラー）
-  const newsData = await getCollectionPosts("news")
+  const newsData = await getCollectionContents("news")
   if (!newsData) {
-    throw new Error("Failed to fetch news posts")
+    throw new Error("Failed to fetch news contents")
   }
-  const newsItems = newsData.posts.slice(0, 3)
+  const newsItems = newsData.contents.slice(0, 3)
 
   // サービス一覧取得（失敗時はビルドエラー）
   const servicesData = await getDataEntries("services", { limit: 3 })

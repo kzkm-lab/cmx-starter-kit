@@ -4,8 +4,8 @@
  */
 
 export {
-  getCollectionPosts,
-  getCollectionPostDetail,
+  getCollectionContents,
+  getCollectionContentDetail,
   getDataEntries,
   getDataEntry,
   getPreviewByToken,
@@ -15,12 +15,12 @@ export {
 export { CACHE_TAGS, sdkFetchWithTags } from "@cmx/api-client/core"
 
 export type {
-  CollectionPostsResponse,
-  CollectionPostDetailResponse,
+  CollectionContentsResponse,
+  CollectionContentDetailResponse,
   DataListResponse,
   DataEntryItem,
   PreviewResponse,
   CollectionInfo,
-  PostListItem,
-  PostDetail,
+  ContentListItem,
+  ContentDetail,
 } from "cmx-sdk"

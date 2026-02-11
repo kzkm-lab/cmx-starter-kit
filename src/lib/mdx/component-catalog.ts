@@ -7,7 +7,7 @@ import { z } from "zod"
 export const componentSchemas = {
   // BlogCard: 他記事への参照
   BlogCard: z.object({
-    postId: z.string().uuid().describe("参照先記事のUUID"),
+    contentId: z.string().uuid().describe("参照先コンテンツのUUID"),
   }),
 
   // Image: 画像表示
@@ -96,7 +96,7 @@ export interface ComponentDefinition<T extends ComponentName = ComponentName> {
   schema: (typeof componentSchemas)[T]
   // AI向けの使用例
   examples: string[]
-  // 参照を含むかどうか（postIdやassetIdを持つ）
+  // 参照を含むかどうか（contentIdやassetIdを持つ）
   hasReferences: boolean
 }
 
@@ -111,7 +111,7 @@ export const componentCatalog: Record<ComponentName, ComponentDefinition> = {
     description: "他の記事へのリンクカードを表示します",
     category: "reference",
     schema: componentSchemas.BlogCard,
-    examples: ['<BlogCard postId="123e4567-e89b-12d3-a456-426614174000" />'],
+    examples: ['<BlogCard contentId="123e4567-e89b-12d3-a456-426614174000" />'],
     hasReferences: true,
   },
 

@@ -118,7 +118,7 @@ src/
 cmx/
 ├── site-config.md                    # サイト固有設定（トーン・デザイン・禁止事項）
 ├── generated/                        # 自動生成コード（手動編集禁止）
-│   ├── collections/{slug}.ts         # get{Name}Posts(), get{Name}PostDetail()
+│   ├── collections/{slug}.ts         # get{Name}Contents(), get{Name}ContentDetail()
 │   └── data-types/{slug}.ts          # {Name}型, get{Name}(), get{Name}ById()
 ├── components/{name}.json            # カスタムコンポーネント JSON 定義
 └── scripts/sync-components.js        # コンポーネント同期スクリプト
@@ -191,16 +191,16 @@ CMX には「コレクション」と「データタイプ」の2種類がある
 
 ```tsx
 // cmx-sdk 直接（汎用）
-import { getCollectionPosts, getCollectionPostDetail, getDataEntries, getDataEntry } from "cmx-sdk"
+import { getCollectionContents, getCollectionContentDetail, getDataEntries, getDataEntry } from "cmx-sdk"
 
 // re-export 経由（推奨）
-import { getCollectionPosts, getCollectionPostDetail, getDataEntries } from "@/lib/api/admin-client"
+import { getCollectionContents, getCollectionContentDetail, getDataEntries } from "@/lib/api/admin-client"
 
 // エラー時 throw するラッパー（ページで使用）
 import { requireFetchPosts, requireFetchContent, requireDataEntries } from "@/lib/utils/data-fetching"
 
 // 型付き自動生成関数（npx cmx-sdk generate 後）
-import { getBlogPosts, getBlogPostDetail } from "@/cmx/generated"
+import { getBlogContents, getBlogContentDetail } from "@/cmx/generated"
 import { getStaff, getStaffById } from "@/cmx/generated"
 ```
 
@@ -219,7 +219,7 @@ export async function generateMetadata() {
 }
 
 export default async function ListPage() {
-  const { collection, posts } = await requireFetchPosts(COLLECTION_SLUGS.xxx)
+  const { collection, contents } = await requireFetchPosts(COLLECTION_SLUGS.xxx)
   return (/* 一覧 UI */)
 }
 ```
@@ -242,8 +242,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function DetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const { post, references } = await requireFetchContent(COLLECTION_SLUGS.xxx, slug)
-  const { content } = await renderMdx(post.mdx, references)
+  const { content, references } = await requireFetchContent(COLLECTION_SLUGS.xxx, slug)
+  const { content: rendered } = await renderMdx(content.mdx, references)
   return (
     <article className="prose prose-lg max-w-none">{content}</article>
   )
@@ -271,7 +271,7 @@ export default async function DataListPage() {
 ```tsx
 import { renderMdx } from "@/lib/mdx/render"
 
-const { content } = await renderMdx(post.mdx, references)
+const { content } = await renderMdx(item.mdx, references)
 // content は ReactElement → JSX に直接埋め込む
 <div className="prose prose-lg max-w-none">{content}</div>
 ```
@@ -283,7 +283,7 @@ import { CACHE_TAGS } from "@/lib/api/admin-client"
 
 CACHE_TAGS.collections            // 全コレクション
 CACHE_TAGS.collection("blog")     // 特定コレクション
-CACHE_TAGS.post("blog", "slug")   // 特定記事
+CACHE_TAGS.content("blog", "slug") // 特定記事
 CACHE_TAGS.data                   // 全データ型
 CACHE_TAGS.dataType("faq")        // 特定データ型
 ```

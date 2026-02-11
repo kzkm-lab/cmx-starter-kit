@@ -1,14 +1,14 @@
 import {
-  fetchPublishedPosts,
+  fetchPublishedContents,
   fetchPublishedContent,
 } from "@/lib/api/public-client"
 import { getDataEntries } from "@/lib/api/admin-client"
 
 /**
- * Fetch collection posts with error throwing on failure
+ * Fetch collection contents with error throwing on failure
  */
-export async function requireFetchPosts(collectionSlug: string) {
-  const data = await fetchPublishedPosts(collectionSlug)
+export async function requireFetchContents(collectionSlug: string) {
+  const data = await fetchPublishedContents(collectionSlug)
   if (!data) {
     throw new Error(`Failed to fetch collection: ${collectionSlug}`)
   }
@@ -16,7 +16,7 @@ export async function requireFetchPosts(collectionSlug: string) {
 }
 
 /**
- * Fetch post content with error throwing on failure
+ * Fetch content detail with error throwing on failure
  */
 export async function requireFetchContent(
   collectionSlug: string,

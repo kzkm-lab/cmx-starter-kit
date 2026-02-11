@@ -2,30 +2,30 @@
 
 ## コンテンツ取得関数
 
-### getCollectionPosts(slug)
+### getCollectionContents(slug)
 
 コレクションの公開記事一覧を取得。
 
 ```tsx
-import { getCollectionPosts } from "@/lib/api/admin-client"
-// または直接: import { getCollectionPosts } from "cmx-sdk"
+import { getCollectionContents } from "@/lib/api/admin-client"
+// または直接: import { getCollectionContents } from "cmx-sdk"
 
-const data = await getCollectionPosts("blog")
+const data = await getCollectionContents("blog")
 // data.collection: { name, slug, description }
-// data.posts: Array<{ id, title, slug, description, publishedAt, status }>
+// data.contents: Array<{ id, title, slug, description, publishedAt, status }>
 ```
 
-### getCollectionPostDetail(collectionSlug, contentSlug)
+### getCollectionContentDetail(collectionSlug, contentSlug)
 
 記事の詳細とMDX本文・リファレンスを取得。
 
 ```tsx
-import { getCollectionPostDetail } from "@/lib/api/admin-client"
+import { getCollectionContentDetail } from "@/lib/api/admin-client"
 
-const data = await getCollectionPostDetail("blog", "my-post")
+const data = await getCollectionContentDetail("blog", "my-post")
 // data.collection: { name, slug }
-// data.post: { id, title, slug, description, mdx, publishedAt, ... }
-// data.references: { posts: {...}, assets: {...} }
+// data.content: { id, title, slug, description, mdx, publishedAt, ... }
+// data.references: { contents: {...}, assets: {...} }
 ```
 
 ### getDataEntries(typeSlug, options?)
@@ -62,9 +62,9 @@ import { getPreviewByToken } from "@/lib/api/admin-client"
 
 const data = await getPreviewByToken(token)
 if (data) {
-  // data.post: { title, mdx, status, environment, ... }
+  // data.content: { title, mdx, status, environment, ... }
   // data.collection: { name, slug }
-  // data.references: { posts, assets }
+  // data.references: { contents, assets }
 }
 ```
 
@@ -74,14 +74,14 @@ if (data) {
 
 ```tsx
 import {
-  requireFetchPosts,     // getCollectionPosts のラッパー
-  requireFetchContent,   // getCollectionPostDetail のラッパー
+  requireFetchPosts,     // getCollectionContents のラッパー
+  requireFetchContent,   // getCollectionContentDetail のラッパー
   requireDataEntries,    // getDataEntries のラッパー
 } from "@/lib/utils/data-fetching"
 
 // 失敗時は Error をthrow（ページレベルでcatch）
-const { collection, posts } = await requireFetchPosts("blog")
-const { post, references } = await requireFetchContent("blog", "my-post")
+const { collection, contents } = await requireFetchPosts("blog")
+const { content, references } = await requireFetchContent("blog", "my-post")
 const { items } = await requireDataEntries("faq")
 ```
 
@@ -91,7 +91,7 @@ const { items } = await requireDataEntries("faq")
 import { renderMdx } from "@/lib/mdx/render"
 
 // references はAPI応答から取得したもの
-const { content } = await renderMdx(post.mdx, references)
+const { content } = await renderMdx(item.mdx, references)
 
 // content はReactElement → JSXに直接埋め込み可能
 <div className="prose prose-lg max-w-none">{content}</div>
@@ -109,7 +109,7 @@ import { revalidateTag } from "next/cache"
 
 CACHE_TAGS.collections           // 全コレクション
 CACHE_TAGS.collection("blog")    // 特定コレクション
-CACHE_TAGS.post("blog", "slug")  // 特定記事
+CACHE_TAGS.content("blog", "slug") // 特定記事
 CACHE_TAGS.data                  // 全データ型
 CACHE_TAGS.dataType("faq")       // 特定データ型
 
@@ -143,8 +143,8 @@ export async function generateMetadata({ params }) {
 
 ```tsx
 import type {
-  CollectionPostsResponse,
-  CollectionPostDetailResponse,
+  CollectionContentsResponse,
+  CollectionContentDetailResponse,
   DataListResponse,
   DataEntryItem,
   PreviewResponse,
@@ -154,7 +154,7 @@ import type {
 // エイリアス（admin-client.ts で定義済み）
 import type {
   CollectionInfo,   // PublicCollectionInfo のエイリアス
-  PostListItem,     // PublicPostListItem のエイリアス
-  PostDetail,       // PublicPostDetail のエイリアス
+  ContentListItem,  // PublicContentListItem のエイリアス
+  ContentDetail,    // PublicContentDetail のエイリアス
 } from "@/lib/api/admin-client"
 ```

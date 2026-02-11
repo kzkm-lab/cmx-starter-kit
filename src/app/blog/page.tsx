@@ -3,9 +3,9 @@ import type { Metadata } from "next"
 import { CalendarDays } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { COLLECTION_SLUGS } from "@/lib/constants/collections"
-import { requireFetchPosts } from "@/lib/utils/data-fetching"
+import { requireFetchContents } from "@/lib/utils/data-fetching"
 import { generateCollectionMetadata } from "@/lib/utils/metadata"
-import { formatPostDate } from "@/lib/utils/date"
+import { formatContentDate } from "@/lib/utils/date"
 
 // ランタイムでデータを取得（ビルド時はスキップ）
 export const dynamic = "force-dynamic"
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function BlogListPage() {
-  const { collection, posts } = await requireFetchPosts(COLLECTION_SLUGS.blog)
+  const { collection, contents } = await requireFetchContents(COLLECTION_SLUGS.blog)
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -27,32 +27,32 @@ export default async function BlogListPage() {
           )}
         </header>
 
-        {posts.length === 0 ? (
+        {contents.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p>まだ記事がありません</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {posts.map((post) => (
-              <Link key={post.id} href={`/blog/${post.slug}`} className="group">
+            {contents.map((item) => (
+              <Link key={item.id} href={`/blog/${item.slug}`} className="group">
                 <Card className="h-full hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle className="group-hover:text-primary transition-colors line-clamp-2">
-                      {post.title}
+                      {item.title}
                     </CardTitle>
-                    {post.publishedAt && (
+                    {item.publishedAt && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <CalendarDays className="h-4 w-4" />
-                        <time dateTime={post.publishedAt}>
-                          {formatPostDate(post.publishedAt)}
+                        <time dateTime={item.publishedAt}>
+                          {formatContentDate(item.publishedAt)}
                         </time>
                       </div>
                     )}
                   </CardHeader>
-                  {post.description && (
+                  {item.description && (
                     <CardContent>
                       <CardDescription className="line-clamp-3">
-                        {post.description}
+                        {item.description}
                       </CardDescription>
                     </CardContent>
                   )}

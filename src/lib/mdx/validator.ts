@@ -18,7 +18,7 @@ export interface ValidationResult {
   errors: ValidationError[]
   warnings: string[]
   references: {
-    postIds: string[]
+    contentIds: string[]
     assetIds: string[]
   }
 }
@@ -139,15 +139,15 @@ function parseProps(propsString: string): Record<string, unknown> {
 // ============================================
 
 function extractReferences(components: ExtractedComponent[]): {
-  postIds: string[]
+  contentIds: string[]
   assetIds: string[]
 } {
-  const postIds: string[] = []
+  const contentIds: string[] = []
   const assetIds: string[] = []
 
   for (const component of components) {
-    if (component.name === "BlogCard" && typeof component.props.postId === "string") {
-      postIds.push(component.props.postId)
+    if (component.name === "BlogCard" && typeof component.props.contentId === "string") {
+      contentIds.push(component.props.contentId)
     }
     if (component.name === "Image" && typeof component.props.assetId === "string") {
       assetIds.push(component.props.assetId)
@@ -155,7 +155,7 @@ function extractReferences(components: ExtractedComponent[]): {
   }
 
   return {
-    postIds: [...new Set(postIds)],
+    contentIds: [...new Set(contentIds)],
     assetIds: [...new Set(assetIds)],
   }
 }

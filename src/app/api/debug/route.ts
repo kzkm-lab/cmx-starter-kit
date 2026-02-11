@@ -15,7 +15,7 @@ export async function GET() {
     }, { status: 500 })
   }
 
-  const url = `${baseUrl}/api/v1/public/collections/news/posts`
+  const url = `${baseUrl}/api/v1/public/collections/news/contents`
 
   const results: Record<string, unknown> = {
     timestamp: new Date().toISOString(),

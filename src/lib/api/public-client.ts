@@ -1,23 +1,23 @@
 import {
-  getCollectionPosts,
-  getCollectionPostDetail,
+  getCollectionContents,
+  getCollectionContentDetail,
 } from "./admin-client"
 
 // 型はcmx-sdkから再エクスポート
 export type {
   CollectionInfo,
-  CollectionPostsResponse as PostsListResponse,
-  CollectionPostDetailResponse as PostDetailResponse,
-  PostListItem,
-  PostDetail,
-  PostReference,
+  CollectionContentsResponse as ContentsListResponse,
+  CollectionContentDetailResponse as ContentDetailResponse,
+  ContentListItem,
+  ContentDetail,
+  ContentReference,
   AssetReference,
   References,
 } from "cmx-sdk"
 
 import type {
-  CollectionPostsResponse as PostsListResponse,
-  CollectionPostDetailResponse as PostDetailResponse,
+  CollectionContentsResponse as ContentsListResponse,
+  CollectionContentDetailResponse as ContentDetailResponse,
 } from "cmx-sdk"
 
 // ============================================
@@ -27,14 +27,14 @@ import type {
 /**
  * 公開記事一覧を取得
  */
-export async function fetchPublishedPosts(
+export async function fetchPublishedContents(
   collectionSlug: string
-): Promise<PostsListResponse | null> {
+): Promise<ContentsListResponse | null> {
   try {
-    const data = await getCollectionPosts(collectionSlug)
-    return data as PostsListResponse
+    const data = await getCollectionContents(collectionSlug)
+    return data as ContentsListResponse
   } catch (error) {
-    console.error("Error fetching posts:", error)
+    console.error("Error fetching contents:", error)
     return null
   }
 }
@@ -45,10 +45,10 @@ export async function fetchPublishedPosts(
 export async function fetchPublishedContent(
   collectionSlug: string,
   contentSlug: string
-): Promise<PostDetailResponse | null> {
+): Promise<ContentDetailResponse | null> {
   try {
-    const data = await getCollectionPostDetail(collectionSlug, contentSlug)
-    return data as PostDetailResponse
+    const data = await getCollectionContentDetail(collectionSlug, contentSlug)
+    return data as ContentDetailResponse
   } catch (error) {
     console.error("Error fetching content:", error)
     return null

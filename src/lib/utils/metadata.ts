@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { fetchPublishedPosts, fetchPublishedContent } from "@/lib/api/public-client"
+import { fetchPublishedContents, fetchPublishedContent } from "@/lib/api/public-client"
 
 /**
  * Generate metadata for a collection list page
@@ -7,7 +7,7 @@ import { fetchPublishedPosts, fetchPublishedContent } from "@/lib/api/public-cli
 export async function generateCollectionMetadata(
   collectionSlug: string
 ): Promise<Metadata> {
-  const data = await fetchPublishedPosts(collectionSlug)
+  const data = await fetchPublishedContents(collectionSlug)
   if (!data) {
     throw new Error(`Failed to fetch collection metadata: ${collectionSlug}`)
   }
@@ -20,19 +20,19 @@ export async function generateCollectionMetadata(
 }
 
 /**
- * Generate metadata for a post detail page
+ * Generate metadata for a content detail page
  */
-export async function generatePostMetadata(
+export async function generateContentMetadata(
   collectionSlug: string,
-  postSlug: string
+  contentSlug: string
 ): Promise<Metadata> {
-  const data = await fetchPublishedContent(collectionSlug, postSlug)
+  const data = await fetchPublishedContent(collectionSlug, contentSlug)
   if (!data) {
-    throw new Error(`Failed to fetch post metadata: ${collectionSlug}/${postSlug}`)
+    throw new Error(`Failed to fetch content metadata: ${collectionSlug}/${contentSlug}`)
   }
 
   return {
-    title: `${data.post.title} | ${data.collection.name} | CMX`,
-    description: data.post.description || undefined,
+    title: `${data.content.title} | ${data.collection.name} | CMX`,
+    description: data.content.description || undefined,
   }
 }

@@ -12,21 +12,21 @@ export {
   type PaginationQuery,
 } from "./common"
 
-// Post schemas
+// Content schemas
 export {
-  postStatusSchema,
-  createPostRequestSchema,
-  updatePostRequestSchema,
-  postResponseSchema,
-  postListItemSchema,
-  createPostResponseSchema,
-  type PostStatus,
-  type CreatePostRequest,
-  type UpdatePostRequest,
-  type PostResponse,
-  type PostListItem,
-  type CreatePostResponse,
-} from "./posts"
+  contentStatusSchema,
+  createContentRequestSchema,
+  updateContentRequestSchema,
+  contentResponseSchema,
+  contentListItemSchema,
+  createContentResponseSchema,
+  type ContentStatus,
+  type CreateContentRequest,
+  type UpdateContentRequest,
+  type ContentResponse,
+  type ContentListItem,
+  type CreateContentResponse,
+} from "./contents"
 
 // Collection schemas
 export {

@@ -9,7 +9,7 @@ import { CACHE_TAGS } from "@/lib/api/admin-client"
 
 CACHE_TAGS.collections             // "collections" — 全コレクション
 CACHE_TAGS.collection("blog")      // "collection:blog" — 特定コレクション
-CACHE_TAGS.post("blog", "hello")   // "post:blog:hello" — 特定記事
+CACHE_TAGS.content("blog", "hello") // "content:blog:hello" — 特定記事
 CACHE_TAGS.data                    // "data" — 全データタイプ
 CACHE_TAGS.dataType("faq")         // "data:faq" — 特定データタイプ
 ```
@@ -23,7 +23,7 @@ CACHE_TAGS.dataType("faq")         // "data:faq" — 特定データタイプ
 export const dynamic = "force-dynamic"
 
 export default async function BlogPage() {
-  const data = await getCollectionPosts("blog")
+  const data = await getCollectionContents("blog")
   // ...
 }
 ```
@@ -37,8 +37,8 @@ import { CACHE_TAGS, sdkFetchWithTags } from "@/lib/api/admin-client"
 export const revalidate = 3600 // 1時間
 
 export default async function BlogPage() {
-  const data = await sdkFetchWithTags<CollectionPostsResponse>(
-    `/sdk/collections/blog/posts`,
+  const data = await sdkFetchWithTags<CollectionContentsResponse>(
+    `/sdk/collections/blog/contents`,
     [CACHE_TAGS.collections, CACHE_TAGS.collection("blog")],
     3600
   )
@@ -56,9 +56,9 @@ export const revalidate = 3600
 
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params
-  const data = await sdkFetchWithTags<CollectionPostDetailResponse>(
-    `/sdk/collections/blog/posts/${slug}`,
-    [CACHE_TAGS.collection("blog"), CACHE_TAGS.post("blog", slug)],
+  const data = await sdkFetchWithTags<CollectionContentDetailResponse>(
+    `/sdk/collections/blog/contents/${slug}`,
+    [CACHE_TAGS.collection("blog"), CACHE_TAGS.content("blog", slug)],
     3600
   )
   // ...
@@ -101,7 +101,7 @@ curl -X POST https://yoursite.com/api/revalidate \
 curl -X POST https://yoursite.com/api/revalidate \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your_secret_key" \
-  -d '{"tag": "post:blog:hello-world"}'
+  -d '{"tag": "content:blog:hello-world"}'
 ```
 
 ### CMX Admin からの連携

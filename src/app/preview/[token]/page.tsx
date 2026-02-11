@@ -24,8 +24,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: `[プレビュー] ${data.post.title} | CMX`,
-    description: data.post.description || undefined,
+    title: `[プレビュー] ${data.content.title} | CMX`,
+    description: data.content.description || undefined,
     robots: {
       index: false,
       follow: false,
@@ -41,11 +41,11 @@ export default async function PreviewPage({ params }: PageProps) {
     notFound()
   }
 
-  const { post, collection, references } = data
+  const { content, collection, references } = data
 
   // renderMdxはReferences型を期待するが、PreviewReferencesと互換
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { content } = await renderMdx(post.mdx, references as any)
+  const { content: renderedContent } = await renderMdx(content.mdx, references as any)
 
   return (
     <article className="container mx-auto px-4 py-12">
@@ -54,19 +54,19 @@ export default async function PreviewPage({ params }: PageProps) {
         <div className="container mx-auto flex items-center justify-center gap-2 text-xs text-amber-700">
           <Eye className="h-3 w-3" />
           <span>プレビューモード</span>
-          {post.environment !== "production" && (
+          {content.environment !== "production" && (
             <>
               <span className="mx-1.5 text-amber-300">|</span>
               <span className="px-1.5 py-0.5 rounded bg-amber-200 font-medium">
-                {post.environment === "staging" ? "ステージング" : post.environment}
+                {content.environment === "staging" ? "ステージング" : content.environment}
               </span>
             </>
           )}
-          {post.status !== "published" && (
+          {content.status !== "published" && (
             <>
               <span className="mx-1.5 text-amber-300">|</span>
               <AlertTriangle className="h-3 w-3" />
-              <span>{post.status === "draft" ? "下書き" : post.status}</span>
+              <span>{content.status === "draft" ? "下書き" : content.status}</span>
             </>
           )}
         </div>
@@ -84,18 +84,18 @@ export default async function PreviewPage({ params }: PageProps) {
           )}
 
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            {post.title}
+            {content.title}
           </h1>
 
-          {post.description && (
-            <p className="text-lg text-muted-foreground mb-4">{post.description}</p>
+          {content.description && (
+            <p className="text-lg text-muted-foreground mb-4">{content.description}</p>
           )}
 
           {/* プレビューでは日付は表示しない（下書きには日付がないため） */}
         </header>
 
         <div className="prose prose-lg max-w-none dark:prose-invert">
-          {content}
+          {renderedContent}
         </div>
 
         <footer className="mt-12 pt-8 border-t">

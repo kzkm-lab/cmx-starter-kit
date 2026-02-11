@@ -6,7 +6,7 @@ export type DateFormatStyle = "full" | "short" | "simple"
  * @param style - Format style: "full" (2024年1月15日), "short" (Jan 15), "simple" (2024/1/15)
  * @param locale - Locale for formatting
  */
-export function formatPostDate(
+export function formatContentDate(
   date: string | Date,
   style: DateFormatStyle = "full",
   locale: "ja-JP" | "en-US" = "ja-JP"
