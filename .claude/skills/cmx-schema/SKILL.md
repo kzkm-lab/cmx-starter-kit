@@ -53,12 +53,24 @@ description: |
 
 `type` の選択:
 
-| type | 用途 |
-|------|------|
-| `post` | ブログ、コラム（時系列コンテンツ） |
-| `page` | 固定ページ（会社概要、サービス紹介） |
-| `doc` | ドキュメント（ツリー構造、マニュアル） |
-| `news` | ニュース、お知らせ |
+| type | 用途 | フロントマターフィールド |
+|------|------|------------------------|
+| `post` | ブログ、コラム（時系列コンテンツ） | title, description, **category**, **tags**, published_at, locale |
+| `page` | 固定ページ（会社概要、サービス紹介） | title, description, locale |
+| `doc` | ドキュメント（ツリー構造、マニュアル） | title, description, order, locale |
+| `news` | ニュース、お知らせ | title, description, published_at, expires_at, important, locale |
+
+**重要**: コレクション type によってフロントマターで使用可能なフィールドが決まります。`post` の場合、`category`（文字列）と `tags`（文字列配列）を直接フロントマターに記述できます。これらを別途データタイプとして定義する必要はありません。
+
+フロントマター例（post）:
+```markdown
+---
+title: 記事タイトル
+description: 説明文
+category: "技術ブログ"
+tags: ["Next.js", "TypeScript"]
+---
+```
 
 ## 登録手順
 

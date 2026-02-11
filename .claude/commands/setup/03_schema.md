@@ -31,6 +31,7 @@ cmx-schema スキルを読み込み、そのガイドに従って JSON 定義を
 
 AGENTS.md の判断基準に従う:
 - MDX 本文を持つ → **コレクション**（type: post/page/doc/news）
+  - `post` の場合、フロントマターで category/tags が使用可能（データタイプ不要）
 - 構造化フィールドのみ → **データタイプ**
 
 ### 3. JSON 定義の生成

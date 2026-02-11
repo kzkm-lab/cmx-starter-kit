@@ -20,6 +20,8 @@
 ---
 title: テスト記事のタイトル
 description: SEO用の説明文（120-160文字）
+category: "技術ブログ"
+tags: ["Next.js", "TypeScript"]
 ---
 
 ## セクション1

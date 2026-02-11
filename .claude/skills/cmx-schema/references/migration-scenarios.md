@@ -25,11 +25,12 @@
 ## ブログ・メディア
 
 コレクション:
-- `post` type=post: 記事カテゴリごと（blog, column, interview等）
+- `post` type=post: 記事（blog, column, interview等）
+  - フロントマター: title, description, category, tags, published_at
+  - **category と tags はフロントマターに直接記述（データタイプ不要）**
 
 データタイプ:
 - `author` — 著者情報（name, bio, avatar, social_links）
-- `tag` — タグ（name, slug）
 
 ## ECサイト
 
