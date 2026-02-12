@@ -8,8 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "会社概要 | CMX",
+  title: "会社概要",
   description: "CMXについて - AI-first MDX CMS",
+  openGraph: {
+    title: "会社概要",
+    description: "CMXについて - AI-first MDX CMS",
+    url: "/about",
+  },
 }
 
 interface TeamMember {

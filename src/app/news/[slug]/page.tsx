@@ -26,8 +26,21 @@ export default async function NewsDetailPage({ params }: PageProps) {
   const { collection, content, references } = await requireFetchContent(COLLECTION_SLUGS.news, slug)
   const { content: renderedContent } = await renderMdx(content.mdx, references)
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:4000"
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    headline: content.title,
+    ...(content.publishedAt && { datePublished: content.publishedAt }),
+    url: `${siteUrl}/news/${slug}`,
+  }
+
   return (
     <article className="container mx-auto px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="max-w-3xl mx-auto">
         <header className="mb-12">
           <Button asChild variant="ghost" size="sm" className="mb-6">

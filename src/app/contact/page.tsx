@@ -4,13 +4,19 @@ import { fetchPublishedContent } from "@/lib/api/public-client"
 import { renderMdx } from "@/lib/mdx/render"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ContactForm } from "./contact-form"
+import { SITE_INFO } from "@/lib/constants/site"
 
 // ISR: 60秒キャッシュ + オンデマンド再検証（/api/revalidate）
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "お問い合わせ | CMX",
+  title: "お問い合わせ",
   description: "CMXへのお問い合わせ",
+  openGraph: {
+    title: "お問い合わせ",
+    description: "CMXへのお問い合わせ",
+    url: "/contact",
+  },
 }
 
 export default async function ContactPage() {
@@ -42,7 +48,7 @@ export default async function ContactPage() {
             <ContactForm />
           </div>
 
-          {/* 連絡先情報 */}
+          {/* 連絡先情報 — src/lib/constants/site.ts で編集 */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -54,7 +60,7 @@ export default async function ContactPage() {
                   <div>
                     <p className="font-medium">メール</p>
                     <p className="text-sm text-muted-foreground">
-                      info@example.com
+                      {SITE_INFO.contact.email}
                     </p>
                   </div>
                 </div>
@@ -64,7 +70,7 @@ export default async function ContactPage() {
                   <div>
                     <p className="font-medium">電話</p>
                     <p className="text-sm text-muted-foreground">
-                      03-1234-5678
+                      {SITE_INFO.contact.phone}
                     </p>
                   </div>
                 </div>
@@ -73,10 +79,8 @@ export default async function ContactPage() {
                   <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="font-medium">所在地</p>
-                    <p className="text-sm text-muted-foreground">
-                      〒100-0001<br />
-                      東京都千代田区1-1-1<br />
-                      サンプルビル 10F
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">
+                      {`${SITE_INFO.contact.postalCode}\n${SITE_INFO.contact.address}`}
                     </p>
                   </div>
                 </div>
@@ -88,9 +92,8 @@ export default async function ContactPage() {
                 <CardTitle className="text-lg">営業時間</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  平日 9:00 - 18:00<br />
-                  土日祝日は休業
+                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  {SITE_INFO.contact.businessHours}
                 </p>
               </CardContent>
             </Card>

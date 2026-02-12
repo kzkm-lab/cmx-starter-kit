@@ -12,10 +12,18 @@ export async function generateCollectionMetadata(
     throw new Error(`Failed to fetch collection metadata: ${collectionSlug}`)
   }
 
+  const title = data.collection.name
+  const description =
+    data.collection.description || `${data.collection.name}のコンテンツ一覧`
+
   return {
-    title: `${data.collection.name} | CMX`,
-    description:
-      data.collection.description || `${data.collection.name}のコンテンツ一覧`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/${collectionSlug}`,
+    },
   }
 }
 
@@ -31,8 +39,20 @@ export async function generateContentMetadata(
     throw new Error(`Failed to fetch content metadata: ${collectionSlug}/${contentSlug}`)
   }
 
+  const title = `${data.content.title} | ${data.collection.name}`
+  const description = data.content.description || undefined
+
   return {
-    title: `${data.content.title} | ${data.collection.name} | CMX`,
-    description: data.content.description || undefined,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: `/${collectionSlug}/${contentSlug}`,
+      ...(data.content.publishedAt && {
+        publishedTime: data.content.publishedAt,
+      }),
+    },
   }
 }

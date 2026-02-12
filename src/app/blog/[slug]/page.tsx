@@ -26,8 +26,22 @@ export default async function BlogPostPage({ params }: PageProps) {
   const { collection, content, references } = await requireFetchContent(COLLECTION_SLUGS.blog, slug)
   const { content: renderedContent } = await renderMdx(content.mdx, references)
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:4000"
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: content.title,
+    ...(content.description && { description: content.description }),
+    ...(content.publishedAt && { datePublished: content.publishedAt }),
+    url: `${siteUrl}/blog/${slug}`,
+  }
+
   return (
     <article className="container mx-auto px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="max-w-3xl mx-auto">
         <header className="mb-12">
           <Button asChild variant="ghost" size="sm" className="mb-6">

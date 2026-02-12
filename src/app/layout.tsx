@@ -19,9 +19,23 @@ const notoSansJP = Noto_Sans_JP({
   weight: ["400", "500", "700"],
 })
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:4000"
+
 export const metadata: Metadata = {
-  title: "CMX Demo Site",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "CMX Demo Site",
+    template: "%s | CMX",
+  },
   description: "AI-first MDX CMS - CMXデモサイト",
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    siteName: "CMX Demo Site",
+  },
+  twitter: {
+    card: "summary",
+  },
 }
 
 export default function RootLayout({
