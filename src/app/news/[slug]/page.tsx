@@ -9,8 +9,8 @@ import { requireFetchContent } from "@/lib/utils/data-fetching"
 import { generateContentMetadata } from "@/lib/utils/metadata"
 import { formatContentDate } from "@/lib/utils/date"
 
-// ランタイムでデータを取得（ビルド時はスキップ）
-export const dynamic = "force-dynamic"
+// ISR: 60秒キャッシュ + オンデマンド再検証（/api/revalidate）
+export const revalidate = 60
 
 interface PageProps {
   params: Promise<{ slug: string }>

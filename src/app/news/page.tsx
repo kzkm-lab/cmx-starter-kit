@@ -6,8 +6,8 @@ import { requireFetchContents } from "@/lib/utils/data-fetching"
 import { generateCollectionMetadata } from "@/lib/utils/metadata"
 import { formatContentDate } from "@/lib/utils/date"
 
-// ランタイムでデータを取得（ビルド時はスキップ）
-export const dynamic = "force-dynamic"
+// ISR: 60秒キャッシュ + オンデマンド再検証（/api/revalidate）
+export const revalidate = 60
 
 export async function generateMetadata(): Promise<Metadata> {
   return generateCollectionMetadata(COLLECTION_SLUGS.news)

@@ -5,8 +5,8 @@ import { renderMdx } from "@/lib/mdx/render"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ContactForm } from "./contact-form"
 
-// ランタイムでデータを取得（ビルド時はスキップ）
-export const dynamic = "force-dynamic"
+// ISR: 60秒キャッシュ + オンデマンド再検証（/api/revalidate）
+export const revalidate = 60
 
 export const metadata: Metadata = {
   title: "お問い合わせ | CMX",

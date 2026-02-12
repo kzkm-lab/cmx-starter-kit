@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCollectionContents, getDataEntries } from "@/lib/api/admin-client"
 
-// ランタイムでデータを取得（ビルド時はスキップ）
-export const dynamic = "force-dynamic"
+// ISR: 60秒キャッシュ + オンデマンド再検証（/api/revalidate）
+export const revalidate = 60
 
 // サービスアイコンのマッピング
 const iconMap: Record<string, React.ReactNode> = {
