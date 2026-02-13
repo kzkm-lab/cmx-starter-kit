@@ -1,5 +1,23 @@
 # CMX Starter Kit — Claude Code Instructions
 
+## プロジェクト構成
+
+このプロジェクトは `site/`（公開サイト）と `dev/`（開発UI）の2つのワークスペースで構成されています。
+
+```
+cmx-starter-kit/
+├── site/          # 公開サイト — エージェントの操作対象
+├── dev/           # 開発UI（セットアップ）— エージェントは触らない
+├── .claude/       # スキル・コマンド（site/ を対象）
+└── workflows/     # ライター向けワークフロー
+```
+
+**重要：エージェントの操作対象は `site/` ディレクトリのみです。`dev/` ディレクトリのコードには触れないでください。**
+
+- ファイル操作（Read/Write/Edit）は `site/` 内のみ
+- コマンド実行（Bash）は `site/` をcwdとする
+- `dev/` はセットアップUI用の開発環境で、Agent SDK が動作します
+
 ## 共通ルール・アーキテクチャ
 
 @AGENTS.md
