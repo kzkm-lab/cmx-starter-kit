@@ -4,32 +4,92 @@ import { useState, useEffect } from "react"
 
 // UI Components
 import { Button } from "@/components/ui/button"
-import { AuthStatus } from "./auth-status"
 import { SettingsDialog } from "./settings-dialog"
-import { AlertCircle, Settings, SendHorizontal, Terminal, Loader2 } from "lucide-react"
+import { CommandMenu, type CommandMetadata } from "./command-menu"
+import { AlertCircle, SendHorizontal, Terminal, Loader2 } from "lucide-react"
 
 interface Message {
   role: "user" | "assistant" | "system"
   content: string
 }
 
-type EnvVars = {
-  CMX_API_KEY?: string
-  CMX_API_URL?: string
-  NEXT_PUBLIC_SITE_URL?: string
+type ChatTab = {
+  id: string
+  title: string
+  messages: Message[]
+  sessionId: string | null
 }
 
-export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([])
+interface ChatInterfaceProps {
+  settingsOpen: boolean
+  onSettingsOpenChange: (open: boolean) => void
+}
+
+export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterfaceProps) {
+  const [tabs, setTabs] = useState<ChatTab[]>([
+    {
+      id: "1",
+      title: "Chat 1",
+      messages: [],
+      sessionId: null,
+    },
+  ])
+  const [activeTabId, setActiveTabId] = useState("1")
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // 環境変数の状態
   const [envConfigured, setEnvConfigured] = useState<boolean | null>(null)
-  const [envValues, setEnvValues] = useState<EnvVars>({})
+
+  // セッション復元済みフラグ
+  const [sessionsLoaded, setSessionsLoaded] = useState(false)
+
+  // アクティブなタブのデータを取得
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) || tabs[0]
+  const messages = activeTab.messages
+
+  // 初回ロード時にセッション情報を復元
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const response = await fetch("/api/setup/sessions")
+        const data = await response.json()
+
+        if (data.tabs && data.tabs.length > 0) {
+          setTabs(data.tabs)
+          setActiveTabId(data.tabs[0].id)
+        }
+      } catch (error) {
+        console.error("Failed to load sessions:", error)
+      } finally {
+        setSessionsLoaded(true)
+      }
+    }
+
+    loadSessions()
+  }, [])
+
+  // タブ更新時に自動保存
+  useEffect(() => {
+    if (!sessionsLoaded) return // 初回ロード完了前は保存しない
+
+    const saveSessions = async () => {
+      try {
+        await fetch("/api/setup/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tabs }),
+        })
+      } catch (error) {
+        console.error("Failed to save sessions:", error)
+      }
+    }
+
+    // デバウンス処理（1秒後に保存）
+    const timeoutId = setTimeout(saveSessions, 1000)
+    return () => clearTimeout(timeoutId)
+  }, [tabs, sessionsLoaded])
 
   // 認証状態を確認
   useEffect(() => {
@@ -59,7 +119,6 @@ export function ChatInterface() {
         // CMX_API_KEY が設定されているかチェック
         const isConfigured = !!(data.env?.CMX_API_KEY && data.env.CMX_API_KEY !== "your_api_key_here")
         setEnvConfigured(isConfigured)
-        setEnvValues(data.env || {})
       } catch (error) {
         console.error("Failed to check env status:", error)
         setEnvConfigured(false)
@@ -68,12 +127,82 @@ export function ChatInterface() {
     checkEnv()
   }, [settingsOpen])
 
+  // タブごとのメッセージ更新ヘルパー
+  const updateTabMessages = (tabId: string, updater: (messages: Message[]) => Message[]) => {
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === tabId ? { ...tab, messages: updater(tab.messages) } : tab
+      )
+    )
+  }
+
+  // タブのセッションID更新
+  const updateTabSessionId = (tabId: string, sessionId: string) => {
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === tabId ? { ...tab, sessionId } : tab
+      )
+    )
+  }
+
+  // 新しいタブを追加
+  const addNewTab = () => {
+    const newTabId = Date.now().toString()
+    const newTab: ChatTab = {
+      id: newTabId,
+      title: `Chat ${tabs.length + 1}`,
+      messages: [],
+      sessionId: null,
+    }
+    setTabs((prev) => [...prev, newTab])
+    setActiveTabId(newTabId)
+  }
+
+  // タブを閉じる
+  const closeTab = (tabId: string) => {
+    if (tabs.length === 1) return // 最後のタブは閉じない
+
+    setTabs((prev) => {
+      const filtered = prev.filter((tab) => tab.id !== tabId)
+      // 閉じたタブがアクティブだった場合、隣のタブをアクティブにする
+      if (activeTabId === tabId) {
+        const index = prev.findIndex((tab) => tab.id === tabId)
+        const nextTab = filtered[Math.max(0, index - 1)]
+        setActiveTabId(nextTab.id)
+      }
+      return filtered
+    })
+  }
+
+  // コマンド選択時の処理
+  const handleCommandSelect = async (command: CommandMetadata) => {
+    try {
+      // コマンドの内容を取得
+      const response = await fetch("/api/setup/commands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commandId: command.id }),
+      })
+
+      const data = await response.json()
+
+      // コマンドの内容をチャットに表示
+      const commandMessage: Message = {
+        role: "system",
+        content: `Command: ${command.name}\n\n${data.content || ""}`,
+      }
+      updateTabMessages(activeTabId, (prev) => [...prev, commandMessage])
+    } catch (error) {
+      console.error("Failed to execute command:", error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading || !isAuthenticated) return
 
     const userMessage: Message = { role: "user", content: input }
-    setMessages((prev) => [...prev, userMessage])
+    updateTabMessages(activeTabId, (prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
 
@@ -83,7 +212,7 @@ export function ChatInterface() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: input,
-          sessionId: sessionId,
+          sessionId: activeTab.sessionId,
         }),
       })
 
@@ -110,10 +239,10 @@ export function ChatInterface() {
                 const data = JSON.parse(line.slice(6))
 
                 if (data.type === "session") {
-                  setSessionId(data.sessionId)
+                  updateTabSessionId(activeTabId, data.sessionId)
                 } else if (data.type === "text") {
                   assistantMessageContent += data.content
-                  setMessages((prev) => {
+                  updateTabMessages(activeTabId, (prev) => {
                     const newMessages = [...prev]
                     const lastMessage = newMessages[newMessages.length - 1]
                     if (lastMessage?.role === "assistant") {
@@ -144,7 +273,7 @@ export function ChatInterface() {
         role: "system",
         content: "エラーが発生しました。もう一度お試しください。",
       }
-      setMessages((prev) => [...prev, errorMessage])
+      updateTabMessages(activeTabId, (prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }
@@ -161,23 +290,63 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-full">
 
-      {/* ステータスバー */}
-      <div className="border-b border-slate-200 px-4 py-3 bg-white flex items-center justify-between">
-        <div className="flex items-center gap-2 text-slate-700">
-           <Terminal className="w-4 h-4 text-slate-400" />
-           <span className="text-sm font-semibold tracking-tight">Console</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <AuthStatus />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 rounded-full hover:bg-slate-100 text-slate-500"
-            onClick={() => setSettingsOpen(true)}
+      {/* タブバー */}
+      <div className="border-b border-slate-200 bg-slate-50/50 px-2 flex items-center gap-1 overflow-x-auto scrollbar-hide">
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            className={`group flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+              activeTabId === tab.id
+                ? "bg-white text-slate-900 border-b-2 border-slate-900"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+            onClick={() => setActiveTabId(tab.id)}
           >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
+            <span className="whitespace-nowrap">{tab.title}</span>
+            {tabs.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  closeTab(tab.id)
+                }}
+                className="opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded p-0.5 transition-opacity"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={addNewTab}
+          className="flex-shrink-0 px-2 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+          title="新しいチャットを開く"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
       </div>
 
       {/* メッセージリスト (Stream Log Style) */}
@@ -197,7 +366,7 @@ export function ChatInterface() {
                 <div>
                    <h3 className="font-semibold text-amber-900 mb-1">Missing Configuration</h3>
                    <p className="text-amber-800 text-sm mb-3">Environment variables are not configured.</p>
-                   <Button size="sm" variant="outline" className="bg-white border-amber-200 text-amber-900 hover:bg-amber-100" onClick={() => setSettingsOpen(true)}>
+                   <Button size="sm" variant="outline" className="bg-white border-amber-200 text-amber-900 hover:bg-amber-100" onClick={() => onSettingsOpenChange(true)}>
                      Configure
                    </Button>
                 </div>
@@ -241,36 +410,41 @@ export function ChatInterface() {
 
       {/* 入力エリア */}
       <div className="p-4 bg-white border-t border-slate-200">
-        <form onSubmit={handleSubmit} className="relative max-w-3xl mx-auto">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={!isAuthenticated || !envConfigured ? "System unavailable" : "Type instructions..."}
-            className="w-full min-h-[56px] pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 focus:bg-white transition-all resize-none text-sm text-slate-800 placeholder:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading || !isAuthenticated || !envConfigured}
-            rows={1}
-          />
-          <Button
-            type="submit"
-            disabled={isLoading || !input.trim() || !isAuthenticated || !envConfigured}
-            variant="ghost" 
-            size="icon"
-            className="absolute right-2 top-2 h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
-          >
-            <SendHorizontal className="h-4 w-4" />
-          </Button>
-        </form>
-        <div className="max-w-3xl mx-auto mt-2 flex justify-between px-1">
-           <span className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Console v1.0.0</span>
-           <span className="text-[10px] text-slate-400">Cmd + Enter to send</span>
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-2">
+            <CommandMenu onCommandSelect={handleCommandSelect} />
+          </div>
+          <form onSubmit={handleSubmit} className="relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={!isAuthenticated || !envConfigured ? "System unavailable" : "Type instructions..."}
+              className="w-full min-h-[56px] pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 focus:bg-white transition-all resize-none text-sm text-slate-800 placeholder:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading || !isAuthenticated || !envConfigured}
+              rows={1}
+            />
+            <Button
+              type="submit"
+              disabled={isLoading || !input.trim() || !isAuthenticated || !envConfigured}
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-2 h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+            >
+              <SendHorizontal className="h-4 w-4" />
+            </Button>
+          </form>
+          <div className="mt-2 flex justify-between px-1">
+            <span className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Console v1.0.0</span>
+            <span className="text-[10px] text-slate-400">Cmd + Enter to send</span>
+          </div>
         </div>
       </div>
 
       {/* 設定ダイアログ */}
       <SettingsDialog
         open={settingsOpen}
-        onOpenChange={setSettingsOpen}
+        onOpenChange={onSettingsOpenChange}
       />
     </div>
   )

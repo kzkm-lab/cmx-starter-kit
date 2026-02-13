@@ -40,7 +40,7 @@ export function UrlBar({
   }
 
   return (
-    <div className="flex items-center gap-2 px-4 py-3 bg-white border-b border-slate-200">
+    <div className="flex items-center gap-2 px-4 py-3 bg-white border-b-[4px] border-slate-900">
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"

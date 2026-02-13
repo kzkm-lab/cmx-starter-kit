@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { RefreshCw, CheckCircle2, XCircle } from "lucide-react"
 
 type AuthStatusData = {
   authenticated: boolean
@@ -36,38 +37,36 @@ export function AuthStatus() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        読み込み中...
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 bg-white">
+        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+        <span className="text-xs font-medium text-slate-600">読み込み中...</span>
       </div>
     )
   }
 
   if (status?.authenticated) {
     return (
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-green-500" />
-          <div className="text-sm font-medium">ログイン済み</div>
+      <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100">
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+          <span className="text-xs font-medium text-slate-700">Authenticated</span>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={fetchAuthStatus}
-          className="ml-2"
+          className="h-7 w-7 p-0 hover:bg-slate-100"
         >
-          更新
+          <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
         </Button>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <div className="h-2 w-2 rounded-full bg-red-500" />
-        未ログイン
-      </div>
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100">
+      <XCircle className="h-3.5 w-3.5 text-red-500" />
+      <span className="text-xs font-medium text-slate-700">Not authenticated</span>
     </div>
   )
 }
