@@ -2,6 +2,36 @@
 
 A Next.js starter template for building content-driven websites with CMX (Content Management Experience).
 
+## Project Structure
+
+このプロジェクトは2つのワークスペースで構成されています：
+
+```
+cmx-starter-kit/
+├── site/          # 公開サイト（Next.js）
+│   ├── src/       # アプリケーションコード
+│   ├── cmx/       # CMX設定・生成コード
+│   └── package.json
+│
+├── dev/           # 開発UI（セットアップ）
+│   ├── src/       # セットアップチャットUI
+│   └── package.json
+│
+├── .claude/       # Claude Code スキル・コマンド
+├── workflows/     # ライター向けワークフロー
+└── pnpm-workspace.yaml
+```
+
+### site/ — 公開サイト
+
+実際のWebサイトのコードです。CMX SDKを使ってコンテンツを取得し、MDXをレンダリングします。
+
+### dev/ — 開発UI（セットアップ）
+
+AIと対話しながらサイトをセットアップできる開発用UIです。Agent SDKを使って`site/`ディレクトリを操作し、スキーマ設計からページ実装まで自動化します。
+
+**注意**: 開発UIは`site/`のみを操作対象とし、`dev/`のコードには触れません。
+
 ## Features
 
 - 🚀 **Next.js 15+** - Modern React framework with App Router
@@ -14,39 +44,55 @@ A Next.js starter template for building content-driven websites with CMX (Conten
 
 ## Quick Start
 
-### 1. Clone this repository
+### 方法A: セットアップUI（推奨）
 
-```bash
-git clone https://github.com/YOUR-ORG/cmx-starter-kit.git
-cd cmx-starter-kit
-```
+AIと対話しながらサイトを構築します。
 
-### 2. Install dependencies
+1. **依存関係をインストール**
 
-```bash
-pnpm install
-```
+   ```bash
+   pnpm install
+   ```
 
-### 3. Configure environment variables
+2. **開発サーバーを起動**
 
-Create a `.env.local` file:
+   ```bash
+   pnpm dev
+   ```
 
-```env
-# Required
-CMX_API_KEY=your_api_key_here
-CMX_API_URL=https://your-cmx-admin.example.com
+   2つのサーバーが起動します：
+   - **セットアップUI**: [http://localhost:4001](http://localhost:4001)
+   - **公開サイト**: [http://localhost:4000](http://localhost:4000)
 
-# Optional
-CMX_WORKSPACE_ID=your_workspace_id
-```
+3. **セットアップUIにアクセス**
 
-### 4. Run development server
+   [http://localhost:4001](http://localhost:4001) を開き、AIと対話しながらサイトをセットアップします。
 
-```bash
-pnpm dev
-```
+   必要なもの：
+   - Anthropic API Key（Agent SDK用）
+   - CMX API Key（コンテンツ管理用）
 
-Open [http://localhost:3000](http://localhost:3000) to see your site.
+### 方法B: 手動セットアップ
+
+Claude Codeのスラッシュコマンドで手動セットアップすることも可能です。
+
+1. **依存関係をインストール**
+
+   ```bash
+   pnpm install
+   ```
+
+2. **Claude Codeで `/setup/start` を実行**
+
+   状態を自動判定し、適切なステップへ案内されます。
+
+3. **サイトを起動**
+
+   ```bash
+   pnpm dev:site
+   ```
+
+   [http://localhost:4000](http://localhost:4000) でサイトが起動します。
 
 ## Custom Components
 
