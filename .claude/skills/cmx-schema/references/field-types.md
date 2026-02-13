@@ -58,6 +58,30 @@
 
 - `targetType` (string) — 参照先データタイプの slug
 
+## defaultValue（デフォルト値）
+
+フィールド定義に `defaultValue` を設定すると、エントリ作成時に値が未入力の場合に自動的に適用されます。
+
+```json
+{
+  "key": "published",
+  "label": "公開",
+  "type": "boolean",
+  "required": true,
+  "defaultValue": false
+}
+```
+
+**動作:**
+- エントリ作成時、フィールドに値が指定されていない場合に `defaultValue` が適用される
+- 明示的に `null` が指定された場合は `null` が保存される（デフォルト値は適用されない）
+- 値の型は `type` と一致する必要がある（例: `boolean` フィールドに `"false"` は不可）
+
+**使用例:**
+- `published: false` — グローバルデータタイプで、デフォルトで非公開
+- `status: "draft"` — ステータスフィールドで、デフォルトで下書き
+- `order: 0` — ソート順フィールドで、デフォルトで0
+
 ## データタイプ JSON 例
 
 ### スタッフ

@@ -53,8 +53,23 @@ npx cmx-sdk list-data-types
 
 承認されたら、`cmx-sdk` コマンドで登録:
 
+**通常）カスタムフィールドで登録:**
 ```bash
 npx cmx-sdk create-data-type --json '{"slug":"{slug}","name":"{name}","description":"{description}","fields":[...]}'
+```
+
+公開/非公開の制御が必要な場合は、fields に以下を追加:
+```json
+{"key":"published","label":"公開","type":"boolean","required":true,"defaultValue":false}
+```
+
+**参考例）プリセートを使用する場合:**
+```bash
+# staff プリセート（スタッフ情報の例）
+npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","presetSlug":"staff"}'
+
+# locations プリセート（場所・施設情報の例）
+npx cmx-sdk create-data-type --json '{"slug":"locations","name":"ロケーション","presetSlug":"locations"}'
 ```
 
 ### Step 2: テストデータ

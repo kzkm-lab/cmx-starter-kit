@@ -134,6 +134,23 @@ npx cmx-sdk add-collection-data-type --collection blog --json '{"slug":"custom-f
 
 **グローバルデータタイプの登録:**
 ```bash
-npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[{"key":"name","label":"名前","type":"text","required":true}]}'
+# カスタムフィールドで登録（推奨）
+npx cmx-sdk create-data-type --json '{"slug":"products","name":"商品","description":"商品情報","fields":[{"key":"name","label":"名前","type":"text","required":true},{"key":"published","label":"公開","type":"boolean","required":true,"defaultValue":false}]}'
+
+# プリセートを使用する場合（参考例）
+npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","presetSlug":"staff"}'
 ```
+
+### グローバルプリセット（参考例）
+
+参考として以下のプリセートが用意されていますが、**カスタムフィールドで自由に定義することを推奨**します。
+
+| slug | フィールド例 | 用途例 |
+|------|----------|------|
+| `staff` | name, role, bio, avatar, email, published | スタッフ情報、チームメンバー紹介 |
+| `locations` | name, address, description, latitude, longitude, image, published | 店舗・施設情報、アクセスマップ |
+
+**公開/非公開の制御:**
+- グローバルデータタイプは公開サイトに直接表示されるため、`published` フィールド（boolean）で公開/非公開を制御するのが一般的
+- コレクションに紐付くデータタイプ（categories, tags, authors）はコンテンツの公開ステータスで制御されるため、`published` フィールドは不要
 

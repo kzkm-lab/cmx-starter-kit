@@ -67,11 +67,30 @@ const { collections } = await res.json()
 // collections[].id でコレクションUUIDを取得
 ```
 
-## コレクション付属データタイプのテストデータ
+## データタイプのテストデータ
+
+### グローバルデータタイプ（公開サイトに直接表示）
+
+公開サイトに直接表示されるデータタイプ（スタッフ、商品、店舗等）のエントリを作成する場合、`published` フィールドを `true` に設定する必要があります（デフォルトは `false`）。
+
+```bash
+# 例: スタッフ情報のエントリを作成（published: true で公開）
+npx cmx-sdk create-data-entry --type-slug staff --json '{"name":"山田太郎","role":"エンジニア","published":true}'
+
+# 例: 店舗情報のエントリを作成（published: true で公開）
+npx cmx-sdk create-data-entry --type-slug locations --json '{"name":"東京オフィス","address":"東京都渋谷区...","published":true}'
+
+# カスタム: 商品情報のエントリを作成
+npx cmx-sdk create-data-entry --type-slug products --json '{"name":"商品A","price":1000,"published":true}'
+```
+
+**重要:** `published: false` または未設定の場合、Public API では取得できません。
+
+### コレクション付属データタイプ（カテゴリ・タグ等）
 
 コレクションに付属データタイプ（カテゴリ・タグ等）がある場合、エントリ作成→コンテンツへの参照設定が必要。
 
-### 1. 付属データタイプのエントリ作成
+#### 1. 付属データタイプのエントリ作成
 
 ```bash
 # コレクションの付属データタイプを確認
@@ -86,7 +105,7 @@ npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"Next.js"}'
 npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"TypeScript"}'
 ```
 
-### 2. コンテンツに参照を設定
+#### 2. コンテンツに参照を設定
 
 コンテンツ作成後、Admin API で参照を設定:
 

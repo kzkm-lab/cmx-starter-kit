@@ -32,8 +32,11 @@ cmx-schema スキルを読み込み、そのガイドに従って JSON 定義を
 AGENTS.md の判断基準に従う:
 - MDX 本文を持つ → **コレクション**（type: post/page/doc/news）
   - コレクションには付属データタイプ（カテゴリ・タグ等）を紐づけ可能
-  - CollectionType に応じたおすすめプリセットが自動提案される
+  - CollectionType に応じたおすすめプリセットが自動提案される（categories, tags, authors, series）
 - 構造化フィールドのみ → **グローバルデータタイプ**
+  - 公開サイトに直接表示されるデータ（スタッフ、商品、店舗情報等）
+  - カスタムフィールドで自由に定義可能（参考例として staff、locations プリセットあり）
+  - 公開/非公開が必要な場合は `published` フィールド（boolean, defaultValue: false）を追加
 
 ### 3. JSON 定義の生成
 
@@ -80,14 +83,22 @@ npx cmx-sdk list-data-types
 npx cmx-sdk create-collection --json '{"type":"post","slug":"blog","name":"ブログ","description":"ブログ記事","dataTypes":["categories","tags"]}'
 ```
 
-プリセット一覧の確認:
+プリセート一覧の確認:
 ```bash
+# コレクション用プリセート（categories, tags, authors, series）
 npx cmx-sdk list-collection-presets --type post
+
+# 全プリセット（コレクション用 + グローバル用）
+npx cmx-sdk list-collection-presets
 ```
 
 グローバルデータタイプの登録:
 ```bash
-npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","description":"スタッフ情報","fields":[...]}'
+# カスタムフィールドで登録（推奨）
+npx cmx-sdk create-data-type --json '{"slug":"products","name":"商品","fields":[{"key":"name","label":"名前","type":"text","required":true},{"key":"published","label":"公開","type":"boolean","required":true,"defaultValue":false}]}'
+
+# プリセートを使用する場合（参考例: staff, locations）
+npx cmx-sdk create-data-type --json '{"slug":"staff","name":"スタッフ","presetSlug":"staff"}'
 ```
 
 ### 5. COLLECTION_SLUGS の更新
