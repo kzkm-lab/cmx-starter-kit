@@ -25,6 +25,7 @@ export function FloatingChat({
   const [isMinimized, setIsMinimized] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const chatRef = useRef<HTMLDivElement>(null)
   const dragStartPos = useRef({ x: 0, y: 0 })
@@ -147,7 +148,7 @@ export function FloatingChat({
       {/* チャットコンテンツ */}
       {!isMinimized && (
         <div className="flex-1 overflow-hidden">
-          <ChatInterface />
+          <ChatInterface settingsOpen={settingsOpen} onSettingsOpenChange={setSettingsOpen} />
         </div>
       )}
     </div>

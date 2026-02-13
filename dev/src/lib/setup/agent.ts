@@ -1,28 +1,21 @@
-import { spawnClaudeCode, type ClaudeCodeMessage } from "./claude-code-cli"
+import { spawnClaudeCode, type NormalizedMessage } from "./claude-code-cli"
 import { getSiteDirPath } from "./setup-state"
 import type { ChildProcess } from "child_process"
 
 export interface AgentOptions {
   prompt: string
-  sessionId?: string
+  sessionId?: string | null
 }
 
-export interface AgentMessage {
-  type: "text" | "tool_use" | "tool_result" | "error" | "done" | "session"
-  content?: string
-  sessionId?: string
-  toolName?: string
-  toolInput?: unknown
-  toolResult?: unknown
-  error?: string
-}
+/** フロントエンドに送信するメッセージ（NormalizedMessage と同一） */
+export type AgentMessage = NormalizedMessage
 
 /**
  * Claude Code CLI を使って site/ ディレクトリでエージェントを実行
  *
- * Agent SDK の代わりに npx @anthropic-ai/claude-code を直接呼び出す
- * OAuth で取得したトークンは ~/.claude.json に保存されており、
- * Claude Code CLI が自動的に読み込む
+ * 制御プロトコル（initialize → set_permission_mode → user message）を経由して
+ * Claude Code CLI と通信し、結果を AsyncGenerator で返す。
+ * session_id は Claude Code が生成した実際のIDを返す。
  */
 export async function* runAgent(
   options: AgentOptions
@@ -41,16 +34,9 @@ export async function* runAgent(
       prompt: options.prompt,
       cwd: siteDir,
       sessionId: options.sessionId,
-      onMessage: (message: ClaudeCodeMessage) => {
+      onMessage: (message: NormalizedMessage) => {
         // Claude Code からのメッセージをキューに追加
-        messageQueue.push({
-          type: message.type,
-          content: message.content,
-          toolName: message.toolName,
-          toolInput: message.toolInput,
-          toolResult: message.toolResult,
-          error: message.error,
-        })
+        messageQueue.push(message)
 
         // 完了メッセージを受け取ったらフラグを立てる
         if (message.type === "done") {
@@ -69,15 +55,8 @@ export async function* runAgent(
       },
     })
 
-    // セッションIDを返す（初回実行時）
-    if (!options.sessionId && childProcess.pid) {
-      yield {
-        type: "session",
-        sessionId: `session-${childProcess.pid}-${Date.now()}`,
-      }
-    }
-
     // メッセージキューを順次処理
+    // session_id は Claude Code の出力から抽出される（onMessage 経由）
     while (!isCompleted || messageQueue.length > 0) {
       if (messageQueue.length > 0) {
         const message = messageQueue.shift()!

@@ -9,8 +9,9 @@ import { CommandMenu, type CommandMetadata } from "./command-menu"
 import { AlertCircle, SendHorizontal, Terminal, Loader2 } from "lucide-react"
 
 interface Message {
-  role: "user" | "assistant" | "system"
+  role: "user" | "assistant" | "system" | "tool"
   content: string
+  toolName?: string
 }
 
 type ChatTab = {
@@ -223,46 +224,74 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       // SSE ストリーム処理
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
-      let assistantMessageContent = ""
+      let sseBuffer = ""
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value)
-          const lines = chunk.split("\n")
+          sseBuffer += decoder.decode(value, { stream: true })
+          const lines = sseBuffer.split("\n")
+          sseBuffer = lines.pop() || ""
 
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6))
+            if (!line.startsWith("data: ")) continue
 
-                if (data.type === "session") {
-                  updateTabSessionId(activeTabId, data.sessionId)
-                } else if (data.type === "text") {
-                  assistantMessageContent += data.content
-                  updateTabMessages(activeTabId, (prev) => {
-                    const newMessages = [...prev]
-                    const lastMessage = newMessages[newMessages.length - 1]
-                    if (lastMessage?.role === "assistant") {
-                      lastMessage.content = assistantMessageContent
-                    } else {
-                      newMessages.push({
-                        role: "assistant",
-                        content: assistantMessageContent,
-                      })
-                    }
-                    return newMessages
-                  })
-                } else if (data.type === "error") {
-                  throw new Error(data.message || "エラーが発生しました")
-                } else if (data.type === "done") {
-                  break
-                }
-              } catch (e) {
-                console.error("Failed to parse SSE data:", e)
+            try {
+              const data = JSON.parse(line.slice(6))
+
+              if (data.type === "session" && data.sessionId) {
+                // Claude Code が生成した実際の session_id を保存
+                updateTabSessionId(activeTabId, data.sessionId)
+              } else if (data.type === "text") {
+                // assistant メッセージは全テキストが含まれる（差分ではない）ので置換
+                updateTabMessages(activeTabId, (prev) => {
+                  const newMessages = [...prev]
+                  const lastMessage = newMessages[newMessages.length - 1]
+                  if (lastMessage?.role === "assistant") {
+                    lastMessage.content = data.content
+                  } else {
+                    newMessages.push({
+                      role: "assistant",
+                      content: data.content,
+                    })
+                  }
+                  return newMessages
+                })
+              } else if (data.type === "tool_use") {
+                // ツール呼び出しの表示
+                updateTabMessages(activeTabId, (prev) => [
+                  ...prev,
+                  {
+                    role: "tool" as const,
+                    content: `${data.toolName}`,
+                    toolName: data.toolName,
+                  },
+                ])
+              } else if (data.type === "tool_result") {
+                // ツール結果の表示（最後の tool メッセージを更新）
+                updateTabMessages(activeTabId, (prev) => {
+                  const newMessages = [...prev]
+                  const lastTool = newMessages.findLast((m) => m.role === "tool")
+                  if (lastTool) {
+                    lastTool.content = `${lastTool.toolName} (completed)`
+                  }
+                  return newMessages
+                })
+              } else if (data.type === "error") {
+                updateTabMessages(activeTabId, (prev) => [
+                  ...prev,
+                  {
+                    role: "system" as const,
+                    content: data.error || "エラーが発生しました",
+                  },
+                ])
+              } else if (data.type === "done") {
+                break
               }
+            } catch {
+              // JSON パース失敗は無視
             }
           }
         }
@@ -382,14 +411,21 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
             {messages.map((message, index) => (
               <div key={index} className={`group flex gap-4 ${message.role === 'user' ? 'pt-4 border-t border-slate-100 mt-4 first:mt-0 first:border-0 first:pt-0' : ''}`}>
                  <div className={`flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold mt-0.5
-                    ${message.role === 'user' ? 'bg-slate-900 text-white' : 
-                      message.role === 'system' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {message.role === 'user' ? 'U' : message.role === 'system' ? '!' : 'AI'}
+                    ${message.role === 'user' ? 'bg-slate-900 text-white' :
+                      message.role === 'system' ? 'bg-red-100 text-red-600' :
+                      message.role === 'tool' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                    {message.role === 'user' ? 'U' : message.role === 'system' ? '!' : message.role === 'tool' ? 'T' : 'AI'}
                  </div>
                  <div className="flex-1 min-w-0">
-                    <div className="prose prose-slate prose-sm max-w-none whitespace-pre-wrap text-slate-700">
-                    {message.content}
-                    </div>
+                    {message.role === 'tool' ? (
+                      <div className="text-xs text-slate-500 font-mono py-1">
+                        {message.content}
+                      </div>
+                    ) : (
+                      <div className="prose prose-slate prose-sm max-w-none whitespace-pre-wrap text-slate-700">
+                        {message.content}
+                      </div>
+                    )}
                  </div>
               </div>
             ))}

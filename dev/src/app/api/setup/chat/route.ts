@@ -1,13 +1,16 @@
 import { NextRequest } from "next/server"
 import { runAgent } from "@/lib/setup/agent"
-import { createSession, hasSession, touchSession } from "@/lib/setup/session-store"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 /**
  * POST /api/setup/chat
- * メッセージを受信 → Agent SDK で処理 → SSE でストリーミングレスポンス
+ * メッセージを受信 → Claude Code CLI で処理 → SSE でストリーミングレスポンス
+ *
+ * セッション管理:
+ * - 初回: sessionId なしで呼び出し → Claude Code が生成した実際の sessionId を返す
+ * - 2回目以降: クライアントから受け取った sessionId を --resume に渡す
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,25 +23,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // セッションIDの確認または作成
-    let sessionId = clientSessionId
-    if (!sessionId || !hasSession(sessionId)) {
-      sessionId = createSession()
-    } else {
-      touchSession(sessionId)
-    }
+    // Claude Code の実際の session_id を使う
+    // 初回は null → Claude Code が生成、2回目以降は --resume で渡す
+    const sessionId = clientSessionId || null
 
     // SSE ストリームの作成
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // セッションIDを最初に送信
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "session", sessionId })}\n\n`)
-          )
-
-          // Agent SDK でメッセージを処理
+          // Agent で メッセージを処理
+          // session タイプのメッセージで Claude Code の実際の sessionId が返る
           for await (const agentMessage of runAgent({
             prompt: message,
             sessionId,
@@ -57,7 +52,7 @@ export async function POST(request: NextRequest) {
             encoder.encode(
               `data: ${JSON.stringify({
                 type: "error",
-                content: error instanceof Error ? error.message : "エラーが発生しました",
+                error: error instanceof Error ? error.message : "エラーが発生しました",
               })}\n\n`
             )
           )
