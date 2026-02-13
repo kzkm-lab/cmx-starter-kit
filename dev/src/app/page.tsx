@@ -4,20 +4,24 @@ import { useState, useRef } from "react"
 import { PreviewFrame } from "./_components/preview-frame"
 import { UrlBar } from "./_components/url-bar"
 import { ChatInterface } from "./_components/chat-interface"
+import { ExternalLink } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable"
 
+const DEFAULT_SITE_URL = "http://localhost:4000"
+const ADMIN_URL = "https://stg.cmx-ai.org"
+
 export default function SetupPage() {
-  const [currentUrl, setCurrentUrl] = useState("http://localhost:4000")
+  const [currentUrl, setCurrentUrl] = useState(DEFAULT_SITE_URL)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // URL バーからのナビゲーション
   const handleNavigate = (url: string) => {
     setCurrentUrl(url)
-    // iframe の src を変更する代わりに、直接 location を変更
     if (iframeRef.current?.contentWindow) {
       try {
         iframeRef.current.contentWindow.location.href = url
@@ -48,25 +52,47 @@ export default function SetupPage() {
     iframeRef.current?.contentWindow?.location.reload()
   }
 
-  return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden">
-      {/* URL バー */}
-      <UrlBar
-        url={currentUrl}
-        onNavigate={handleNavigate}
-        onBack={handleBack}
-        onForward={handleForward}
-        onRefresh={handleRefresh}
-      />
+  const handleHome = () => {
+    handleNavigate(DEFAULT_SITE_URL)
+  }
 
+  return (
+    <div className="h-screen w-screen overflow-hidden">
       {/* リサイズ可能なパネルレイアウト */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* 左側: iframe プレビュー */}
+      <ResizablePanelGroup direction="horizontal" className="h-full">
+        {/* 左側: URL バー + iframe プレビュー */}
         <ResizablePanel defaultSize={70} minSize={40}>
-          <PreviewFrame
-            initialUrl={currentUrl}
-            onUrlChange={handleUrlChange}
-          />
+          <div className="h-full flex flex-col">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between px-4 py-2 bg-slate-50/50 border-b border-slate-200">
+              <h1 className="text-sm font-semibold text-slate-900">Site Preview</h1>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                onClick={() => window.open(ADMIN_URL, "_blank")}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Admin を開く
+              </Button>
+            </div>
+            {/* URL バー */}
+            <UrlBar
+              url={currentUrl}
+              onNavigate={handleNavigate}
+              onBack={handleBack}
+              onForward={handleForward}
+              onRefresh={handleRefresh}
+              onHome={handleHome}
+            />
+            {/* iframe プレビュー */}
+            <div className="flex-1">
+              <PreviewFrame
+                initialUrl={currentUrl}
+                onUrlChange={handleUrlChange}
+              />
+            </div>
+          </div>
         </ResizablePanel>
 
         {/* リサイズハンドル */}
@@ -74,9 +100,7 @@ export default function SetupPage() {
 
         {/* 右側: チャットインターフェース */}
         <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-          <div className="h-full overflow-hidden">
-            <ChatInterface />
-          </div>
+          <ChatInterface />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

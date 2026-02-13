@@ -52,22 +52,28 @@ export const PreviewFrame = forwardRef<HTMLIFrameElement, PreviewFrameProps>(
   }, [onUrlChange])
 
     return (
-      <div className="relative w-full h-full">
+      <div className="relative w-full h-full bg-slate-100">
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto" />
-              <p className="mt-4 text-sm text-gray-600">サイトを読み込み中...</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10 transition-all duration-300">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-900 border-t-transparent" />
+              <p className="text-xs font-medium text-slate-500 tracking-wide uppercase">Loading Preview...</p>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <p className="text-red-600 font-medium">{error}</p>
-              <p className="mt-2 text-sm text-gray-600">
-                localhost:4000 でサーバーが起動していることを確認してください
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
+            <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-sm border border-slate-200">
+              <div className="h-10 w-10 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <div className="h-4 w-4 text-red-500 rounded-sm border-2 border-current" />
+              </div>
+              <h3 className="text-slate-900 font-semibold mb-2">Preview Unavailable</h3>
+              <p className="text-slate-500 text-sm mb-4">
+                {error}
+              </p>
+              <p className="text-xs text-slate-400">
+                Ensure the development server is running at localhost:4000
               </p>
             </div>
           </div>
