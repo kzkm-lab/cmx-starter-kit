@@ -116,19 +116,20 @@ export function ChatInterface() {
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Cmd+Enter または Ctrl+Enter で送信
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault()
+      handleSubmit(e as any)
+    }
+  }
+
   return (
-    <div className="flex flex-col h-screen">
-      {/* ヘッダー */}
-      <div className="border-b p-4 bg-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">CMX Starter Kit セットアップ</h1>
-            <p className="text-sm text-muted-foreground">
-              AI アシスタントがサイトのセットアップをお手伝いします
-            </p>
-          </div>
-          <AuthStatus />
-        </div>
+    <div className="flex flex-col h-full">
+      {/* ステータスバー */}
+      <div className="border-b px-3 py-2 bg-gray-50 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Setup Assistant</span>
+        <AuthStatus />
       </div>
 
       {/* メッセージ一覧 */}
@@ -136,10 +137,17 @@ export function ChatInterface() {
         {!isAuthenticated ? (
           <div className="text-center text-gray-500 mt-8">
             <p className="text-lg font-medium">
-              Claude Code で認証してください
+              Claude Code にログインしてください
             </p>
-            <p className="mt-2 text-sm">
-              セットアップを開始するには、まず右上の「Claude Code で認証」ボタンから認証を完了してください。
+            <p className="mt-4 text-sm max-w-md mx-auto">
+              セットアップを開始するには、ターミナルで以下のコマンドを実行して
+              Claude Code にログインしてください：
+            </p>
+            <pre className="mt-4 p-4 bg-gray-100 rounded-md text-left max-w-md mx-auto">
+              <code>claude-code login</code>
+            </pre>
+            <p className="mt-4 text-sm text-muted-foreground">
+              ログイン完了後、このページをリロードしてください。
             </p>
           </div>
         ) : messages.length === 0 ? (
@@ -188,17 +196,18 @@ export function ChatInterface() {
 
       {/* 入力フォーム */}
       <form onSubmit={handleSubmit} className="border-t p-4 flex gap-2">
-        <input
-          type="text"
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={
             isAuthenticated
-              ? "メッセージを入力..."
-              : "認証が必要です"
+              ? "メッセージを入力... (Cmd+Enter で送信)"
+              : "ログインが必要です"
           }
-          className="flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed resize-none min-h-[80px]"
           disabled={isLoading || !isAuthenticated}
+          rows={3}
         />
         <Button
           type="submit"

@@ -4,13 +4,13 @@
   "private": true,
   "description": "CMX Starter Kit - A Next.js template for building content-driven websites with CMX",
   "scripts": {
-    "dev": "pnpm --filter site dev & pnpm --filter dev dev",
-    "dev:site": "pnpm --filter site dev",
-    "dev:setup": "pnpm --filter dev dev",
-    "build": "pnpm --filter site build",
-    "build:cf": "pnpm --filter site build:cf",
-    "deploy": "pnpm --filter site deploy",
-    "typecheck": "pnpm --filter site typecheck",
-    "lint": "pnpm --filter site lint"
+    "dev": "pnpm --filter cmx-starter-kit dev & pnpm --filter cmx-starter-kit-dev dev",
+    "dev:site": "pnpm --filter cmx-starter-kit dev",
+    "dev:setup": "pnpm --filter cmx-starter-kit-dev dev",
+    "build": "pnpm --filter cmx-starter-kit build",
+    "build:cf": "pnpm --filter cmx-starter-kit build:cf",
+    "deploy": "pnpm --filter cmx-starter-kit deploy",
+    "typecheck": "pnpm --filter cmx-starter-kit typecheck",
+    "lint": "pnpm --filter cmx-starter-kit lint"
   }
 }

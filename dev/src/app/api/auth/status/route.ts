@@ -1,41 +1,23 @@
 import { NextResponse } from "next/server"
-import { loadCredentials, isTokenExpired } from "@/lib/auth/token-store"
-import { claudeCodeClient } from "@/lib/auth/claude-code-client"
+import { existsSync } from "fs"
+import { homedir } from "os"
+import { join } from "path"
 
 /**
- * 認証状態確認エンドポイント
+ * 認証状態確認エンドポイント（簡略版）
  *
  * GET /api/auth/status
- * Response: { authenticated: boolean, user?: { name: string, email: string } }
+ * Response: { authenticated: boolean }
  */
 export async function GET() {
   try {
-    const credentials = await loadCredentials()
+    // ~/.claude.json が存在するかチェック
+    const claudeJsonPath = join(homedir(), ".claude.json")
+    const isAuthenticated = existsSync(claudeJsonPath)
 
-    if (!credentials) {
-      return NextResponse.json({ authenticated: false })
-    }
-
-    // トークンの有効期限チェック
-    if (isTokenExpired(credentials)) {
-      return NextResponse.json({ authenticated: false })
-    }
-
-    // ユーザー情報を取得
-    try {
-      const user = await claudeCodeClient.getUserProfile()
-      return NextResponse.json({
-        authenticated: true,
-        user: {
-          name: user.name,
-          email: user.email,
-        },
-      })
-    } catch (error) {
-      // トークンが無効な場合
-      console.error("Failed to get user profile:", error)
-      return NextResponse.json({ authenticated: false })
-    }
+    return NextResponse.json({
+      authenticated: isAuthenticated,
+    })
   } catch (error) {
     console.error("Auth status check failed:", error)
     return NextResponse.json({ authenticated: false })

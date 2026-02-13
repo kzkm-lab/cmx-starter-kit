@@ -1,98 +1,108 @@
-import { query, type PermissionResult } from "@anthropic-ai/claude-agent-sdk"
+import { spawnClaudeCode, type ClaudeCodeMessage } from "./claude-code-cli"
 import { getSiteDirPath } from "./setup-state"
+import type { ChildProcess } from "child_process"
 
 export interface AgentOptions {
   prompt: string
   sessionId?: string
-  apiKey?: string
 }
 
 export interface AgentMessage {
-  type: "text" | "tool_use" | "tool_result"
-  content: string
+  type: "text" | "tool_use" | "tool_result" | "error" | "done" | "session"
+  content?: string
+  sessionId?: string
   toolName?: string
   toolInput?: unknown
   toolResult?: unknown
+  error?: string
 }
 
 /**
- * Agent SDK を使って site/ ディレクトリでエージェントを実行
+ * Claude Code CLI を使って site/ ディレクトリでエージェントを実行
+ *
+ * Agent SDK の代わりに npx @anthropic-ai/claude-code を直接呼び出す
+ * OAuth で取得したトークンは ~/.claude.json に保存されており、
+ * Claude Code CLI が自動的に読み込む
  */
-export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentMessage> {
+export async function* runAgent(
+  options: AgentOptions
+): AsyncGenerator<AgentMessage> {
   const siteDir = getSiteDirPath()
-  const apiKey = options.apiKey || process.env.ANTHROPIC_API_KEY
 
-  if (!apiKey) {
-    throw new Error("Anthropic API Key が設定されていません")
-  }
+  // メッセージキューを作成
+  const messageQueue: AgentMessage[] = []
+  let isCompleted = false
+  let processError: Error | null = null
+  let childProcess: ChildProcess | null = null
 
-  // Agent SDK は環境変数 ANTHROPIC_API_KEY から自動で読み込むため、
-  // ここで明示的にセットする
-  process.env.ANTHROPIC_API_KEY = apiKey
-
+  // Claude Code CLI を起動
   try {
-    // Agent SDK の query() を使ってエージェントを起動
-    const messages = query({
+    childProcess = spawnClaudeCode({
       prompt: options.prompt,
-      options: {
-        allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
-        settingSources: ["project"], // site/ 内の CLAUDE.md、スキルを読み込む
-        systemPrompt: { type: "preset", preset: "claude_code" },
-        includePartialMessages: true, // ストリーミング用
-        cwd: siteDir, // site/ だけが操作対象
-        resume: options.sessionId, // マルチターン対話
-        // パーミッション制御: site/ 内のみ許可
-        canUseTool: async (toolName, input): Promise<PermissionResult> => {
-          // Read/Glob/Grep は自動承認
-          if (["Read", "Glob", "Grep"].includes(toolName)) {
-            return { behavior: "allow", updatedInput: input }
-          }
+      cwd: siteDir,
+      sessionId: options.sessionId,
+      onMessage: (message: ClaudeCodeMessage) => {
+        // Claude Code からのメッセージをキューに追加
+        messageQueue.push({
+          type: message.type,
+          content: message.content,
+          toolName: message.toolName,
+          toolInput: message.toolInput,
+          toolResult: message.toolResult,
+          error: message.error,
+        })
 
-          // Write/Edit/Bash は site/ ディレクトリ内のみ許可
-          if (toolName === "Write" || toolName === "Edit") {
-            const filePath = input.file_path as string | undefined
-            if (filePath && !filePath.startsWith(siteDir)) {
-              return {
-                behavior: "deny",
-                message: "site/ ディレクトリ外への操作は許可されていません",
-              }
-            }
-          }
-
-          if (toolName === "Bash") {
-            const command = input.command as string | undefined
-            // dev/ への操作を含むコマンドは拒否
-            if (command && command.includes("../dev")) {
-              return {
-                behavior: "deny",
-                message: "dev/ ディレクトリへの操作は許可されていません",
-              }
-            }
-          }
-
-          return { behavior: "allow", updatedInput: input }
-        },
+        // 完了メッセージを受け取ったらフラグを立てる
+        if (message.type === "done") {
+          isCompleted = true
+        }
+      },
+      onError: (error: Error) => {
+        processError = error
+        isCompleted = true
+      },
+      onExit: (code: number | null) => {
+        if (code !== 0 && code !== null) {
+          processError = new Error(`Claude Code CLI exited with code ${code}`)
+        }
+        isCompleted = true
       },
     })
 
-    // Agent SDK のメッセージをストリーミング
-    for await (const message of messages) {
-      yield normalizeAgentMessage(message)
+    // セッションIDを返す（初回実行時）
+    if (!options.sessionId && childProcess.pid) {
+      yield {
+        type: "session",
+        sessionId: `session-${childProcess.pid}-${Date.now()}`,
+      }
+    }
+
+    // メッセージキューを順次処理
+    while (!isCompleted || messageQueue.length > 0) {
+      if (messageQueue.length > 0) {
+        const message = messageQueue.shift()!
+        yield message
+      } else {
+        // キューが空の場合は少し待つ
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+    }
+
+    // エラーがあれば投げる
+    if (processError) {
+      throw processError
     }
   } catch (error) {
-    console.error("Agent SDK error:", error)
-    throw error
-  }
-}
-
-/**
- * Agent SDK のメッセージを正規化
- */
-function normalizeAgentMessage(message: any): AgentMessage {
-  // Agent SDK の実際のメッセージ型に合わせて実装
-  // プレースホルダー実装
-  return {
-    type: "text",
-    content: JSON.stringify(message),
+    console.error("Claude Code CLI error:", error)
+    yield {
+      type: "error",
+      error:
+        error instanceof Error ? error.message : "Unknown error occurred",
+    }
+  } finally {
+    // プロセスをクリーンアップ
+    if (childProcess && !childProcess.killed) {
+      childProcess.kill()
+    }
   }
 }
