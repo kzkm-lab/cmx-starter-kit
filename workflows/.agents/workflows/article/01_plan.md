@@ -19,7 +19,9 @@ argument-hint: [テーマやアイデア（省略可）]
 | `list_collections` | コレクション一覧と記事数を把握 |
 | `search_posts` | 既存記事の取得・重複チェック |
 | `get_post` | 必要に応じて記事詳細を確認 |
-| `create_draft` | 企画承認後に下書きを作成（status: "plan"） |
+| `list_data_types` | コレクションのデータタイプ（著者・カテゴリ等）を確認 |
+| `list_data_entries` | データタイプのエントリ一覧を取得 |
+| `create_draft` | 企画承認後に下書きを作成（`status: "plan"` で企画段階として登録） |
 
 ## 手順
 
@@ -85,6 +87,30 @@ create_draft(collectionId, slug, title, description, status: "plan")
 → postId を取得
 ```
 
+### 6. 著者・カテゴリの事前選択
+
+企画登録後、コレクションにデータタイプ（著者・カテゴリなど）が存在する場合は事前選択を案内する。
+
+```
+list_data_types(collectionSlug)
+→ コレクションに紐づくデータタイプを確認
+
+データタイプがある場合:
+  list_data_entries(collectionSlug, dataTypeSlug)
+  → 各データタイプのエントリ一覧を取得
+  → ユーザーに著者・カテゴリの選択を提示
+```
+
+**案内例:**
+```
+このコレクションには以下のデータタイプがあります：
+
+- **著者**: 田中太郎, 山田花子, ...
+- **カテゴリ**: チュートリアル, ニュース, ...
+
+下書き執筆時に紐付けるので、希望があればお知らせください。
+```
+
 ## 出力
 
 ```
@@ -93,6 +119,7 @@ create_draft(collectionId, slug, title, description, status: "plan")
 - **postId**: {postId}
 - **タイトル**: {タイトル}
 - **ステータス**: plan
+- **データタイプ**: {利用可能なデータタイプがあれば表示}
 
 下書き執筆は /article/02_draft で続けられます。
 ```
