@@ -1,4 +1,4 @@
-import { query } from "@anthropic-ai/claude-agent-sdk"
+import { query, type PermissionResult } from "@anthropic-ai/claude-agent-sdk"
 import { getSiteDirPath } from "./setup-state"
 
 export interface AgentOptions {
@@ -26,6 +26,10 @@ export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentMess
     throw new Error("Anthropic API Key が設定されていません")
   }
 
+  // Agent SDK は環境変数 ANTHROPIC_API_KEY から自動で読み込むため、
+  // ここで明示的にセットする
+  process.env.ANTHROPIC_API_KEY = apiKey
+
   try {
     // Agent SDK の query() を使ってエージェントを起動
     const messages = query({
@@ -37,31 +41,36 @@ export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentMess
         includePartialMessages: true, // ストリーミング用
         cwd: siteDir, // site/ だけが操作対象
         resume: options.sessionId, // マルチターン対話
-        apiKey,
         // パーミッション制御: site/ 内のみ許可
-        canUseTool: async (tool) => {
+        canUseTool: async (toolName, input): Promise<PermissionResult> => {
           // Read/Glob/Grep は自動承認
-          if (["Read", "Glob", "Grep"].includes(tool.name)) {
-            return true
+          if (["Read", "Glob", "Grep"].includes(toolName)) {
+            return { behavior: "allow", updatedInput: input }
           }
 
           // Write/Edit/Bash は site/ ディレクトリ内のみ許可
-          if (tool.name === "Write" || tool.name === "Edit") {
-            const filePath = tool.params?.file_path as string
+          if (toolName === "Write" || toolName === "Edit") {
+            const filePath = input.file_path as string | undefined
             if (filePath && !filePath.startsWith(siteDir)) {
-              return false // dev/ への操作は拒否
+              return {
+                behavior: "deny",
+                message: "site/ ディレクトリ外への操作は許可されていません",
+              }
             }
           }
 
-          if (tool.name === "Bash") {
-            const command = tool.params?.command as string
+          if (toolName === "Bash") {
+            const command = input.command as string | undefined
             // dev/ への操作を含むコマンドは拒否
             if (command && command.includes("../dev")) {
-              return false
+              return {
+                behavior: "deny",
+                message: "dev/ ディレクトリへの操作は許可されていません",
+              }
             }
           }
 
-          return true
+          return { behavior: "allow", updatedInput: input }
         },
       },
     })
