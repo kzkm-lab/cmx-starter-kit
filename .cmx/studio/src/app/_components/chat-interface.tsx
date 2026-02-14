@@ -6,10 +6,14 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "./settings-dialog"
 import { CommandMenu, type CommandMetadata } from "./command-menu"
-import { AlertCircle, SendHorizontal, Terminal, Loader2, GitBranch } from "lucide-react"
+import { AlertCircle, SendHorizontal, Terminal, Loader2, GitBranch, Plus, MessageSquare } from "lucide-react"
 import { TodoPanel } from "./todo-panel"
 import { DeployPanel } from "./deploy-panel"
 import type { TodoItem } from "@/lib/setup/claude-code-cli"
+
+// ============================================================
+// 型定義（クライアント側）
+// ============================================================
 
 interface Message {
   role: "user" | "assistant" | "system" | "tool"
@@ -17,7 +21,10 @@ interface Message {
   toolName?: string
 }
 
-type ChatTab = {
+type TaskStatus = "idle" | "working" | "paused" | "done"
+
+/** チャット（会話単位） */
+interface Chat {
   id: string
   title: string
   messages: Message[]
@@ -25,22 +32,61 @@ type ChatTab = {
   todos: TodoItem[]
 }
 
+/** タスク（作業単位 = ブランチ） */
+interface Task {
+  id: string
+  title: string
+  branchName: string | null
+  status: TaskStatus
+  chats: Chat[]
+  activeChatId: string
+}
+
+// ============================================================
+// ヘルパー
+// ============================================================
+
+function createChat(index: number): Chat {
+  const id = Date.now().toString()
+  return {
+    id,
+    title: `Chat ${index}`,
+    messages: [],
+    sessionId: null,
+    todos: [],
+  }
+}
+
+function createTask(index: number): Task {
+  const id = Date.now().toString()
+  const chat = createChat(1)
+  return {
+    id,
+    title: `Task ${index}`,
+    branchName: `cmx/task-${id}`,
+    status: "idle",
+    chats: [chat],
+    activeChatId: chat.id,
+  }
+}
+
+// ============================================================
+// コンポーネント
+// ============================================================
+
 interface ChatInterfaceProps {
   settingsOpen: boolean
   onSettingsOpenChange: (open: boolean) => void
 }
 
 export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterfaceProps) {
-  const [tabs, setTabs] = useState<ChatTab[]>([
-    {
-      id: "1",
-      title: "Chat 1",
-      messages: [],
-      sessionId: null,
-      todos: [],
-    },
-  ])
-  const [activeTabId, setActiveTabId] = useState("1")
+  // タスク・チャット状態
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const task = createTask(1)
+    return [task]
+  })
+  const [activeTaskId, setActiveTaskId] = useState(() => tasks[0].id)
+
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -56,9 +102,14 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   // セッション復元済みフラグ
   const [sessionsLoaded, setSessionsLoaded] = useState(false)
 
-  // アクティブなタブのデータを取得
-  const activeTab = tabs.find((tab) => tab.id === activeTabId) || tabs[0]
-  const messages = activeTab.messages
+  // アクティブなタスク・チャットを取得（データ不整合時のフォールバック付き）
+  const activeTask = tasks.find((t) => t.id === activeTaskId) ?? tasks[0]
+  const activeChat = activeTask?.chats?.find((c) => c.id === activeTask.activeChatId) ?? activeTask?.chats?.[0]
+  const messages = activeChat?.messages ?? []
+
+  // ============================================================
+  // セッション管理
+  // ============================================================
 
   // 初回ロード時にセッション情報を復元
   useEffect(() => {
@@ -67,9 +118,15 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         const response = await fetch("/api/setup/sessions")
         const data = await response.json()
 
-        if (data.tabs && data.tabs.length > 0) {
-          setTabs(data.tabs)
-          setActiveTabId(data.tabs[0].id)
+        if (data.tasks && Array.isArray(data.tasks) && data.tasks.length > 0) {
+          // chats 配列を持つ有効なタスクのみ復元
+          const validTasks = (data.tasks as Task[]).filter(
+            (t) => t.id && Array.isArray(t.chats) && t.chats.length > 0
+          )
+          if (validTasks.length > 0) {
+            setTasks(validTasks)
+            setActiveTaskId(validTasks[0].id)
+          }
         }
       } catch (error) {
         console.error("Failed to load sessions:", error)
@@ -81,26 +138,29 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     loadSessions()
   }, [])
 
-  // タブ更新時に自動保存
+  // タスク更新時に自動保存
   useEffect(() => {
-    if (!sessionsLoaded) return // 初回ロード完了前は保存しない
+    if (!sessionsLoaded) return
 
     const saveSessions = async () => {
       try {
         await fetch("/api/setup/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tabs }),
+          body: JSON.stringify({ tasks }),
         })
       } catch (error) {
         console.error("Failed to save sessions:", error)
       }
     }
 
-    // デバウンス処理（1秒後に保存）
     const timeoutId = setTimeout(saveSessions, 1000)
     return () => clearTimeout(timeoutId)
-  }, [tabs, sessionsLoaded])
+  }, [tasks, sessionsLoaded])
+
+  // ============================================================
+  // 環境チェック
+  // ============================================================
 
   // 認証状態を確認
   useEffect(() => {
@@ -115,7 +175,6 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     }
     checkAuth()
 
-    // 定期的に認証状態を確認（30秒ごと）
     const interval = setInterval(checkAuth, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -127,7 +186,6 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         const response = await fetch("/api/setup/env")
         const data = await response.json()
 
-        // CMX_API_KEY が設定されているかチェック
         const isConfigured = !!(data.env?.CMX_API_KEY && data.env.CMX_API_KEY !== "your_api_key_here")
         setEnvConfigured(isConfigured)
       } catch (error) {
@@ -140,7 +198,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
 
   // 開発ブランチの存在チェック
   useEffect(() => {
-    if (!envConfigured) return // 環境変数が未設定なら先にそちらを表示
+    if (!envConfigured) return
 
     const checkBranch = async () => {
       try {
@@ -182,67 +240,181 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     }
   }
 
-  // タブごとのメッセージ更新ヘルパー
-  const updateTabMessages = (tabId: string, updater: (messages: Message[]) => Message[]) => {
-    setTabs((prev) =>
-      prev.map((tab) =>
-        tab.id === tabId ? { ...tab, messages: updater(tab.messages) } : tab
-      )
-    )
+  // ============================================================
+  // タスク更新ヘルパー
+  // ============================================================
+
+  /** タスクを更新 */
+  const updateTask = (taskId: string, updater: (task: Task) => Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updater(t) : t)))
   }
 
-  // タブのセッションID更新
-  const updateTabSessionId = (tabId: string, sessionId: string) => {
-    setTabs((prev) =>
-      prev.map((tab) =>
-        tab.id === tabId ? { ...tab, sessionId } : tab
-      )
-    )
+  /** アクティブタスク内のチャットを更新 */
+  const updateChat = (chatId: string, updater: (chat: Chat) => Chat) => {
+    updateTask(activeTaskId, (task) => ({
+      ...task,
+      chats: task.chats.map((c) => (c.id === chatId ? updater(c) : c)),
+    }))
   }
 
-  // タブの todos 更新
-  const updateTabTodos = (tabId: string, todos: TodoItem[]) => {
-    setTabs((prev) =>
-      prev.map((tab) =>
-        tab.id === tabId ? { ...tab, todos } : tab
-      )
-    )
+  /** アクティブチャットのメッセージを更新 */
+  const updateMessages = (updater: (messages: Message[]) => Message[]) => {
+    if (!activeChat) return
+    updateChat(activeChat.id, (chat) => ({ ...chat, messages: updater(chat.messages) }))
   }
 
-  // 新しいタブを追加
-  const addNewTab = () => {
-    const newTabId = Date.now().toString()
-    const newTab: ChatTab = {
-      id: newTabId,
-      title: `Chat ${tabs.length + 1}`,
-      messages: [],
-      sessionId: null,
-      todos: [],
-    }
-    setTabs((prev) => [...prev, newTab])
-    setActiveTabId(newTabId)
+  /** アクティブチャットのセッションIDを更新 */
+  const updateSessionId = (sessionId: string) => {
+    if (!activeChat) return
+    updateChat(activeChat.id, (chat) => ({ ...chat, sessionId }))
   }
 
-  // タブを閉じる
-  const closeTab = (tabId: string) => {
-    if (tabs.length === 1) return // 最後のタブは閉じない
+  /** アクティブチャットの todos を更新 */
+  const updateTodos = (todos: TodoItem[]) => {
+    if (!activeChat) return
+    updateChat(activeChat.id, (chat) => ({ ...chat, todos }))
+  }
 
-    setTabs((prev) => {
-      const filtered = prev.filter((tab) => tab.id !== tabId)
-      // 閉じたタブがアクティブだった場合、隣のタブをアクティブにする
-      if (activeTabId === tabId) {
-        const index = prev.findIndex((tab) => tab.id === tabId)
-        const nextTab = filtered[Math.max(0, index - 1)]
-        setActiveTabId(nextTab.id)
+  // ============================================================
+  // タスク操作
+  // ============================================================
+
+  /** タスク切り替え（ブランチ切り替え） */
+  const handleTaskSwitch = async (newTaskId: string) => {
+    if (newTaskId === activeTaskId) return
+    if (isLoading) return
+
+    const targetTask = tasks.find((t) => t.id === newTaskId)
+    if (!targetTask) return
+
+    try {
+      const response = await fetch("/api/setup/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "switch-task",
+          fromTaskId: activeTaskId,
+          toTaskId: newTaskId,
+          toBranch: targetTask.branchName,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        // 切替元を paused に
+        if (activeTask.status === "working") {
+          updateTask(activeTaskId, (t) => ({ ...t, status: "paused" as const }))
+        }
+        setActiveTaskId(newTaskId)
+      } else {
+        console.error("Failed to switch task:", data.error)
       }
-      return filtered
+    } catch (error) {
+      console.error("Failed to switch task:", error)
+    }
+  }
+
+  /** 新しいタスクを追加 */
+  const addNewTask = () => {
+    const newTask = createTask(tasks.length + 1)
+    setTasks((prev) => [...prev, newTask])
+    handleTaskSwitch(newTask.id)
+  }
+
+  /** タスク反映（直接マージモード） */
+  const handleApplyTask = async () => {
+    if (!activeTask.branchName) return
+
+    try {
+      const response = await fetch("/api/setup/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "apply-task",
+          taskId: activeTaskId,
+          branchName: activeTask.branchName,
+          summary: activeTask.title,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        updateTask(activeTaskId, (t) => ({ ...t, status: "done" as const }))
+      } else {
+        console.error("Failed to apply task:", data.error)
+      }
+    } catch (error) {
+      console.error("Failed to apply task:", error)
+    }
+  }
+
+  /** タスクブランチをプッシュ（PR モード） */
+  const handlePushTask = async () => {
+    if (!activeTask.branchName) return
+
+    try {
+      const response = await fetch("/api/setup/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "push-task",
+          taskId: activeTaskId,
+          branchName: activeTask.branchName,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        updateTask(activeTaskId, (t) => ({ ...t, status: "done" as const }))
+        sendMessage(
+          `ブランチ ${activeTask.branchName} をリモートにプッシュしました。GitHub で develop へのプルリクエストを作成してください。`
+        )
+      } else {
+        console.error("Failed to push task:", data.error)
+      }
+    } catch (error) {
+      console.error("Failed to push task:", error)
+    }
+  }
+
+  // ============================================================
+  // チャット操作（タスク内、ブランチ切り替えなし）
+  // ============================================================
+
+  /** チャットタブ切り替え（ブランチ切り替えなし） */
+  const handleChatSwitch = (chatId: string) => {
+    if (!activeTask || chatId === activeTask.activeChatId) return
+    updateTask(activeTaskId, (task) => ({ ...task, activeChatId: chatId }))
+  }
+
+  /** 新しいチャットを追加（タスク内） */
+  const addNewChat = () => {
+    if (!activeTask) return
+    const newChat = createChat(activeTask.chats.length + 1)
+    updateTask(activeTaskId, (task) => ({
+      ...task,
+      chats: [...task.chats, newChat],
+      activeChatId: newChat.id,
+    }))
+  }
+
+  /** チャットタブを閉じる */
+  const closeChat = (chatId: string) => {
+    if (!activeTask || activeTask.chats.length === 1) return
+
+    updateTask(activeTaskId, (task) => {
+      const filtered = task.chats.filter((c) => c.id !== chatId)
+      const newActiveChatId =
+        task.activeChatId === chatId
+          ? filtered[Math.max(0, task.chats.findIndex((c) => c.id === chatId) - 1)].id
+          : task.activeChatId
+      return { ...task, chats: filtered, activeChatId: newActiveChatId }
     })
   }
 
-  // コマンド選択時の処理
+  // ============================================================
+  // メッセージ送信
+  // ============================================================
+
   const handleCommandSelect = async (command: CommandMetadata) => {
     try {
-      // コマンドの内容を取得
       const response = await fetch("/api/setup/commands", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -251,24 +423,27 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
 
       const data = await response.json()
 
-      // コマンドの内容をチャットに表示
       const commandMessage: Message = {
         role: "system",
         content: `Command: ${command.name}\n\n${data.content || ""}`,
       }
-      updateTabMessages(activeTabId, (prev) => [...prev, commandMessage])
+      updateMessages((prev) => [...prev, commandMessage])
     } catch (error) {
       console.error("Failed to execute command:", error)
     }
   }
 
-  // メッセージ送信の共通ロジック（DeployPanel からも呼ばれる）
   const sendMessage = async (message: string) => {
-    if (!message.trim() || isLoading || !isAuthenticated) return
+    if (!message.trim() || isLoading || !isAuthenticated || !activeTask || !activeChat) return
 
     const userMessage: Message = { role: "user", content: message }
-    updateTabMessages(activeTabId, (prev) => [...prev, userMessage])
+    updateMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
+
+    // タスクステータスを working に
+    if (activeTask.status === "idle" || activeTask.status === "paused") {
+      updateTask(activeTaskId, (t) => ({ ...t, status: "working" as const }))
+    }
 
     try {
       const response = await fetch("/api/setup/chat", {
@@ -276,7 +451,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          sessionId: activeTab.sessionId,
+          sessionId: activeChat?.sessionId ?? null,
         }),
       })
 
@@ -305,11 +480,9 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               const data = JSON.parse(line.slice(6))
 
               if (data.type === "session" && data.sessionId) {
-                // Claude Code が生成した実際の session_id を保存
-                updateTabSessionId(activeTabId, data.sessionId)
+                updateSessionId(data.sessionId)
               } else if (data.type === "text") {
-                // assistant メッセージは全テキストが含まれる（差分ではない）ので置換
-                updateTabMessages(activeTabId, (prev) => {
+                updateMessages((prev) => {
                   const newMessages = [...prev]
                   const lastMessage = newMessages[newMessages.length - 1]
                   if (lastMessage?.role === "assistant") {
@@ -323,8 +496,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   return newMessages
                 })
               } else if (data.type === "tool_use") {
-                // ツール呼び出しの表示
-                updateTabMessages(activeTabId, (prev) => [
+                updateMessages((prev) => [
                   ...prev,
                   {
                     role: "tool" as const,
@@ -333,8 +505,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   },
                 ])
               } else if (data.type === "tool_result") {
-                // ツール結果の表示（最後の tool メッセージを更新）
-                updateTabMessages(activeTabId, (prev) => {
+                updateMessages((prev) => {
                   const newMessages = [...prev]
                   const lastTool = newMessages.findLast((m) => m.role === "tool")
                   if (lastTool) {
@@ -343,9 +514,9 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   return newMessages
                 })
               } else if (data.type === "todo_update" && data.todos) {
-                updateTabTodos(activeTabId, data.todos)
+                updateTodos(data.todos)
               } else if (data.type === "error") {
-                updateTabMessages(activeTabId, (prev) => [
+                updateMessages((prev) => [
                   ...prev,
                   {
                     role: "system" as const,
@@ -367,7 +538,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         role: "system",
         content: "エラーが発生しました。もう一度お試しください。",
       }
-      updateTabMessages(activeTabId, (prev) => [...prev, errorMessage])
+      updateMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }
@@ -382,76 +553,118 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Cmd+Enter または Ctrl+Enter で送信
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
       handleSubmit(e)
     }
   }
 
+  // ============================================================
+  // UI ヘルパー
+  // ============================================================
+
+  const statusDotClass = (status: TaskStatus) => {
+    switch (status) {
+      case "working":
+        return "bg-blue-500 animate-pulse"
+      case "paused":
+        return "bg-amber-400"
+      case "done":
+        return "bg-green-500"
+      default:
+        return "bg-slate-300"
+    }
+  }
+
+  // ============================================================
+  // レンダリング
+  // ============================================================
+
   return (
     <div className="flex flex-col h-full">
 
-      {/* タブバー */}
+      {/* タスクバー（タスク切り替え + ステータス） */}
       <div className="border-b border-slate-200 bg-slate-50/50 px-2 flex items-center gap-1 overflow-x-auto scrollbar-hide">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={`group flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
-              activeTabId === tab.id
+        {tasks.map((task) => (
+          <button
+            key={task.id}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${
+              activeTaskId === task.id
                 ? "bg-white text-slate-900 border-b-2 border-slate-900"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-500 hover:text-slate-700"
             }`}
-            onClick={() => setActiveTabId(tab.id)}
+            onClick={() => handleTaskSwitch(task.id)}
+            disabled={isLoading && activeTaskId !== task.id}
           >
-            <span className="whitespace-nowrap">{tab.title}</span>
-            {tabs.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  closeTab(tab.id)
-                }}
-                className="opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded p-0.5 transition-opacity"
-              >
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass(task.status)}`} />
+            <span>{task.title}</span>
+          </button>
         ))}
         <button
-          onClick={addNewTab}
-          className="flex-shrink-0 px-2 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
-          title="新しいチャットを開く"
+          onClick={addNewTask}
+          className="flex-shrink-0 px-2 py-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+          title="新しいタスクを開く"
+          disabled={isLoading}
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
+          <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* メッセージリスト (Stream Log Style) */}
+      {/* タスクヘッダー: ブランチ状態 + アクションボタン（環境準備完了時のみ） */}
+      {isAuthenticated && envConfigured && branchReady && activeTask && (
+        <div className="border-b border-slate-100">
+          <DeployPanel
+            onSendMessage={sendMessage}
+            isLoading={isLoading}
+            currentTaskBranch={activeTask.branchName}
+            taskStatus={activeTask.status}
+            onApplyTask={handleApplyTask}
+            onPushTask={handlePushTask}
+          />
+        </div>
+      )}
+
+      {/* チャットタブ（タスク内の会話切り替え） */}
+      {isAuthenticated && envConfigured && branchReady && activeTask && (
+        <div className="border-b border-slate-100 bg-white px-2 flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
+          <MessageSquare className="w-3 h-3 text-slate-300 mx-1 flex-shrink-0" />
+          {activeTask.chats.map((chat) => (
+            <div
+              key={chat.id}
+              className={`group flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                activeTask.activeChatId === chat.id
+                  ? "text-slate-900 bg-slate-50 rounded-t"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+              onClick={() => handleChatSwitch(chat.id)}
+            >
+              <span className="whitespace-nowrap">{chat.title}</span>
+              {activeTask.chats.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    closeChat(chat.id)
+                  }}
+                  className="opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded p-0.5 transition-opacity"
+                >
+                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            onClick={addNewChat}
+            className="flex-shrink-0 px-1.5 py-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+            title="新しいチャットを追加"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
+      {/* メッセージリスト（チャット専用） */}
       <div className="flex-1 overflow-y-auto bg-slate-50/50 p-4 font-mono text-sm leading-relaxed">
         {!isAuthenticated ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-4">
@@ -483,6 +696,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               </div>
               <p className="text-sm text-slate-600">
                 変更管理を開始するには、開発ブランチ（<code className="bg-slate-200 px-1 rounded text-xs">{targetBranchName}</code>）を作成してください。
+                すべての作業はこのブランチ上で行います。
               </p>
               <Button
                 size="sm"
@@ -500,17 +714,12 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
             </div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-6">
-            <DeployPanel onSendMessage={sendMessage} isLoading={isLoading} />
-            <div className="flex flex-col items-center">
-              <Terminal className="w-12 h-12 mb-4 opacity-20" />
-              <p className="text-sm">Ready to assist. Type a command or request.</p>
-            </div>
+          <div className="h-full flex flex-col items-center justify-center text-slate-400">
+            <Terminal className="w-12 h-12 mb-4 opacity-20" />
+            <p className="text-sm">Ready to assist. Type a command or request.</p>
           </div>
         ) : (
           <div className="space-y-6 max-w-3xl mx-auto">
-            {/* デプロイパネル */}
-            <DeployPanel onSendMessage={sendMessage} isLoading={isLoading} />
             {messages.map((message, index) => (
               <div key={index} className={`group flex gap-4 ${message.role === 'user' ? 'pt-4 border-t border-slate-100 mt-4 first:mt-0 first:border-0 first:pt-0' : ''}`}>
                  <div className={`flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold mt-0.5
@@ -532,11 +741,11 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                  </div>
               </div>
             ))}
-            
+
             {/* Todo Panel */}
-            {activeTab.todos?.length > 0 && (
+            {activeChat?.todos?.length > 0 && (
               <div className="mt-4">
-                <TodoPanel todos={activeTab.todos} />
+                <TodoPanel todos={activeChat.todos} />
               </div>
             )}
 

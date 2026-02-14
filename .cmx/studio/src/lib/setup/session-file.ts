@@ -11,40 +11,59 @@ export interface Message {
   content: string
 }
 
-export interface ChatTab {
+/** タスクの状態 */
+export type TaskStatus = "idle" | "working" | "paused" | "done"
+
+/** チャット（会話単位） */
+export interface Chat {
   id: string
   title: string
   messages: Message[]
+  /** Claude Code セッション ID */
   sessionId: string | null
+}
+
+/** タスク（作業単位 = ブランチ） */
+export interface Task {
+  id: string
+  title: string
+  /** 紐づくブランチ名（例: cmx/task-{id}）。null = develop 上で直接作業 */
+  branchName: string | null
+  /** タスクの状態 */
+  status: TaskStatus
+  /** タスク内のチャット一覧 */
+  chats: Chat[]
+  /** アクティブなチャットの ID */
+  activeChatId: string
 }
 
 const SESSION_FILE = path.join(process.env.HOME || "/tmp", ".cmx-dev-sessions.json")
 
 /**
- * すべてのタブ情報をファイルに保存
+ * すべてのタスク情報をファイルに保存
  */
-export async function saveTabs(tabs: ChatTab[]): Promise<void> {
+export async function saveTasks(tasks: Task[]): Promise<void> {
   try {
-    await fs.writeFile(SESSION_FILE, JSON.stringify(tabs, null, 2), "utf-8")
+    await fs.writeFile(SESSION_FILE, JSON.stringify(tasks, null, 2), "utf-8")
   } catch (error) {
-    console.error("Failed to save tabs to file:", error)
+    console.error("Failed to save tasks to file:", error)
   }
 }
 
 /**
- * ファイルからタブ情報を復元
+ * ファイルからタスク情報を復元
  */
-export async function loadTabs(): Promise<ChatTab[] | null> {
+export async function loadTasks(): Promise<Task[] | null> {
   try {
     const data = await fs.readFile(SESSION_FILE, "utf-8")
-    const tabs = JSON.parse(data) as ChatTab[]
-    return tabs
+    const tasks = JSON.parse(data) as Task[]
+    return tasks
   } catch (error) {
     // ファイルが存在しない場合は null を返す
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return null
     }
-    console.error("Failed to load tabs from file:", error)
+    console.error("Failed to load tasks from file:", error)
     return null
   }
 }
@@ -52,12 +71,12 @@ export async function loadTabs(): Promise<ChatTab[] | null> {
 /**
  * セッションファイルをクリア
  */
-export async function clearTabs(): Promise<void> {
+export async function clearTasks(): Promise<void> {
   try {
     await fs.unlink(SESSION_FILE)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.error("Failed to clear tabs file:", error)
+      console.error("Failed to clear tasks file:", error)
     }
   }
 }

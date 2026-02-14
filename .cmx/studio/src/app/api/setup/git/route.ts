@@ -1,5 +1,12 @@
 import { NextRequest } from "next/server"
-import { getGitStatus, getGitDiffSummary, createBranch } from "@/lib/setup/git-service"
+import {
+  getGitStatus,
+  getGitDiffSummary,
+  createBranch,
+  switchTask,
+  applyTaskDirect,
+  pushTaskBranch,
+} from "@/lib/setup/git-service"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -22,19 +29,21 @@ export async function GET() {
 
 /**
  * POST /api/setup/git
- * アクション実行（diff取得など）
+ * アクション実行
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { action, branchName } = body
+    const { action } = body
 
     switch (action) {
       case "diff": {
         const diff = getGitDiffSummary()
         return Response.json({ diff })
       }
+
       case "create-branch": {
+        const { branchName } = body
         if (!branchName || typeof branchName !== "string") {
           return Response.json({ error: "branchName is required" }, { status: 400 })
         }
@@ -44,6 +53,43 @@ export async function POST(request: NextRequest) {
         }
         return Response.json({ success: true })
       }
+
+      case "switch-task": {
+        const { fromTaskId, toTaskId, toBranch } = body
+        if (!fromTaskId || !toTaskId) {
+          return Response.json({ error: "fromTaskId and toTaskId are required" }, { status: 400 })
+        }
+        const result = switchTask({ fromTaskId, toTaskId, toBranch: toBranch ?? null })
+        if (!result.success) {
+          return Response.json({ error: result.error }, { status: 500 })
+        }
+        return Response.json({ success: true, checkpointHash: result.checkpointHash })
+      }
+
+      case "apply-task": {
+        const { taskId, branchName, summary } = body
+        if (!taskId || !branchName) {
+          return Response.json({ error: "taskId and branchName are required" }, { status: 400 })
+        }
+        const result = applyTaskDirect({ taskId, branchName, summary: summary ?? "" })
+        if (!result.success) {
+          return Response.json({ error: result.error }, { status: 500 })
+        }
+        return Response.json({ success: true })
+      }
+
+      case "push-task": {
+        const { taskId, branchName } = body
+        if (!taskId || !branchName) {
+          return Response.json({ error: "taskId and branchName are required" }, { status: 400 })
+        }
+        const result = pushTaskBranch({ taskId, branchName })
+        if (!result.success) {
+          return Response.json({ error: result.error }, { status: 500 })
+        }
+        return Response.json({ success: true })
+      }
+
       default:
         return Response.json({ error: "Unknown action" }, { status: 400 })
     }

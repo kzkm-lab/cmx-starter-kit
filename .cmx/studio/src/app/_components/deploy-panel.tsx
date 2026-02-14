@@ -5,23 +5,35 @@ import {
   ChevronDown,
   ChevronRight,
   GitBranch,
+  GitMerge,
+  GitPullRequest,
   FileEdit,
   FilePlus,
   FileX,
   ArrowRight,
   RefreshCw,
-  Send,
+  Upload,
   Eye,
   Circle,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { GitStatus, EnvironmentStatus } from "@/lib/setup/git-service"
+import type { GitStatus } from "@/lib/setup/git-service"
+import type { TaskStatus } from "@/lib/setup/session-file"
 
 interface DeployPanelProps {
   /** チャットにメッセージを送信する関数 */
   onSendMessage: (message: string) => void
   /** チャットがローディング中か */
   isLoading: boolean
+  /** 現在のタスクのブランチ名 */
+  currentTaskBranch: string | null
+  /** タスクのステータス */
+  taskStatus: TaskStatus
+  /** タスク完了ハンドラ */
+  onApplyTask: () => void
+  /** PR 用プッシュハンドラ */
+  onPushTask: () => void
 }
 
 /** ファイルステータスに対応するアイコン */
@@ -40,24 +52,14 @@ function FileStatusIcon({ status }: { status: string }) {
   }
 }
 
-/** 環境ステータスの丸アイコン */
-function EnvDot({ env, isFirst }: { env: EnvironmentStatus; isFirst: boolean }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      {!isFirst && <ArrowRight className="w-3 h-3 text-slate-300" />}
-      <div className="flex items-center gap-1">
-        <Circle
-          className={`w-2.5 h-2.5 ${
-            env.exists ? "text-green-500 fill-green-500" : "text-slate-300 fill-slate-300"
-          }`}
-        />
-        <span className="text-[10px] text-slate-500">{env.name}</span>
-      </div>
-    </div>
-  )
-}
-
-export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
+export function DeployPanel({
+  onSendMessage,
+  isLoading,
+  currentTaskBranch,
+  taskStatus,
+  onApplyTask,
+  onPushTask,
+}: DeployPanelProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -85,11 +87,28 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
 
   if (!gitStatus) return null
 
-  const { currentBranch, targetBranch, changedFiles, commitsAhead, environments } = gitStatus
+  const { currentBranch, targetBranch, changedFiles, commitsAhead, environments, workflowMode } = gitStatus
 
   // develop ブランチが存在するか
   const targetEnv = environments.find((e) => e.branch === targetBranch)
   const targetExists = targetEnv?.exists ?? false
+  const isOnDevelop = currentBranch === targetBranch
+  const isOnTaskBranch = currentTaskBranch !== null && currentBranch === currentTaskBranch
+  const hasChanges = changedFiles.length > 0 || commitsAhead > 0
+
+  // 「変更を確認」ボタンのハンドラ
+  const handleViewChanges = () => {
+    onSendMessage(
+      `現在の変更内容を確認してください。git diff で変更の概要を教えてください。`
+    )
+  }
+
+  // 「リモートにプッシュ」ボタンのハンドラ（develop ブランチ上）
+  const handlePushToRemote = () => {
+    onSendMessage(
+      `develop ブランチをリモートリポジトリにプッシュしてください。リモートが設定されていない場合は設定方法を教えてください。`
+    )
+  }
 
   // 「開発ブランチを作成」ハンドラ（API 直接呼び出し）
   const handleCreateDevelop = async () => {
@@ -101,7 +120,7 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
       })
       const data = await response.json()
       if (data.success) {
-        await fetchStatus() // パネルを即時更新
+        await fetchStatus()
       } else {
         console.error("Failed to create branch:", data.error)
       }
@@ -110,22 +129,8 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
     }
   }
 
-  // 「開発に送る」ボタンのハンドラ
-  const handleSendToDevelop = () => {
-    onSendMessage(
-      `現在の変更内容で ${targetBranch} ブランチへのプルリクエストを作成してください。変更内容を要約してPRのタイトルと説明を付けてください。`
-    )
-  }
-
-  // 「変更を確認」ボタンのハンドラ
-  const handleViewChanges = () => {
-    onSendMessage(
-      `現在の変更内容を確認してください。git diff で変更の概要を教えてください。`
-    )
-  }
-
   return (
-    <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+    <div className="bg-white overflow-hidden">
       {/* Header */}
       <button
         className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
@@ -137,10 +142,13 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
         )}
         <span>サイトの状態</span>
-        <div className="flex items-center gap-0.5 ml-auto">
-          {environments.map((env, i) => (
-            <EnvDot key={env.branch} env={env} isFirst={i === 0} />
-          ))}
+        <div className="flex items-center gap-1 ml-auto">
+          <Circle
+            className={`w-2.5 h-2.5 ${
+              targetExists ? "text-green-500 fill-green-500" : "text-slate-300 fill-slate-300"
+            }`}
+          />
+          <span className="text-[10px] text-slate-500 font-mono">{currentBranch}</span>
         </div>
       </button>
 
@@ -151,8 +159,13 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
             <div className="flex items-center gap-1.5 text-xs">
               <GitBranch className="w-3.5 h-3.5 text-slate-400" />
               <span className="font-mono font-medium text-slate-700">{currentBranch}</span>
-              <ArrowRight className="w-3 h-3 text-slate-300" />
-              <span className="font-mono text-slate-500">{targetBranch}</span>
+              {/* タスクブランチ上のときだけマージ先を表示 */}
+              {isOnTaskBranch && (
+                <>
+                  <ArrowRight className="w-3 h-3 text-slate-300" />
+                  <span className="font-mono text-slate-500">{targetBranch}</span>
+                </>
+              )}
             </div>
             <button
               onClick={fetchStatus}
@@ -169,7 +182,7 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
             <div className="flex items-center gap-2 text-[10px]">
               {commitsAhead > 0 && (
                 <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded">
-                  {commitsAhead} commit ahead
+                  {commitsAhead} commit{commitsAhead > 1 ? "s" : ""} ahead
                 </span>
               )}
               {changedFiles.length > 0 && (
@@ -195,30 +208,9 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
             </div>
           )}
 
-          {/* 環境ステータス */}
-          <div className="space-y-1">
-            {environments.map((env) => (
-              <div key={env.branch} className="flex items-center justify-between text-[10px]">
-                <div className="flex items-center gap-1.5">
-                  <Circle
-                    className={`w-2 h-2 ${
-                      env.exists ? "text-green-500 fill-green-500" : "text-slate-300 fill-slate-300"
-                    }`}
-                  />
-                  <span className="font-medium text-slate-600">{env.name}</span>
-                  {env.commitHash && (
-                    <span className="font-mono text-slate-400">{env.commitHash}</span>
-                  )}
-                </div>
-                {env.commitDate && (
-                  <span className="text-slate-400">{env.commitDate}</span>
-                )}
-              </div>
-            ))}
-          </div>
-
           {/* アクションボタン */}
           {!targetExists ? (
+            /* develop ブランチが未作成 */
             <div className="pt-1 space-y-2">
               <p className="text-[10px] text-amber-600">
                 開発ブランチ ({targetBranch}) がありません。作成すると変更管理を開始できます。
@@ -233,26 +225,94 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
                 開発ブランチを作成
               </Button>
             </div>
+          ) : isOnTaskBranch ? (
+            /* タスクブランチ上: 反映 or PR */
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px] gap-1"
+                  onClick={handleViewChanges}
+                  disabled={isLoading}
+                >
+                  <Eye className="w-3 h-3" />
+                  変更を確認
+                </Button>
+                {workflowMode === "direct" ? (
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] gap-1"
+                    onClick={onApplyTask}
+                    disabled={isLoading || !hasChanges}
+                  >
+                    <Check className="w-3 h-3" />
+                    反映する
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] gap-1"
+                    onClick={onPushTask}
+                    disabled={isLoading || !hasChanges}
+                  >
+                    <GitPullRequest className="w-3 h-3" />
+                    レビューに出す
+                  </Button>
+                )}
+              </div>
+              {taskStatus === "done" && (
+                <p className="text-[10px] text-green-600">
+                  このタスクの変更は反映済みです
+                </p>
+              )}
+            </div>
+          ) : isOnDevelop ? (
+            /* develop ブランチ上: プッシュで反映 */
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px] gap-1"
+                  onClick={handleViewChanges}
+                  disabled={isLoading}
+                >
+                  <Eye className="w-3 h-3" />
+                  変更を確認
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-[11px] gap-1"
+                  onClick={handlePushToRemote}
+                  disabled={isLoading || !hasChanges}
+                >
+                  <Upload className="w-3 h-3" />
+                  プッシュ
+                </Button>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                main への反映はリモートで PR を作成してください
+              </p>
+            </div>
           ) : (
-            <div className="flex items-center gap-2 pt-1">
+            /* その他のブランチ上（main 等）→ develop に戻す */
+            <div className="space-y-2">
+              <p className="text-[10px] text-amber-600">
+                作業は {targetBranch} ブランチ上で行います。{targetBranch} に切り替えてください。
+              </p>
               <Button
-                variant="outline"
                 size="sm"
                 className="h-7 text-[11px] gap-1"
-                onClick={handleViewChanges}
+                onClick={() => {
+                  onSendMessage(
+                    `${targetBranch} ブランチにチェックアウトしてください。`
+                  )
+                }}
                 disabled={isLoading}
               >
-                <Eye className="w-3 h-3" />
-                変更を確認
-              </Button>
-              <Button
-                size="sm"
-                className="h-7 text-[11px] gap-1"
-                onClick={handleSendToDevelop}
-                disabled={isLoading || (changedFiles.length === 0 && commitsAhead === 0)}
-              >
-                <Send className="w-3 h-3" />
-                開発に送る
+                <GitBranch className="w-3 h-3" />
+                {targetBranch} に切り替え
               </Button>
             </div>
           )}

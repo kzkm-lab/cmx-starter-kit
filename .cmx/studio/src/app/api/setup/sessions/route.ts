@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { loadTabs, saveTabs, clearTabs, type ChatTab } from "@/lib/setup/session-file"
+import { loadTasks, saveTasks, clearTasks, type Task } from "@/lib/setup/session-file"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic"
  */
 export async function GET() {
   try {
-    const tabs = await loadTabs()
-    return NextResponse.json({ tabs })
+    const tasks = await loadTasks()
+    return NextResponse.json({ tasks })
   } catch (error) {
     console.error("Failed to load sessions:", error)
     return NextResponse.json({ error: "Failed to load sessions" }, { status: 500 })
@@ -24,13 +24,13 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { tabs } = await request.json() as { tabs: ChatTab[] }
+    const { tasks } = await request.json() as { tasks: Task[] }
 
-    if (!Array.isArray(tabs)) {
-      return NextResponse.json({ error: "Invalid tabs data" }, { status: 400 })
+    if (!Array.isArray(tasks)) {
+      return NextResponse.json({ error: "Invalid tasks data" }, { status: 400 })
     }
 
-    await saveTabs(tabs)
+    await saveTasks(tasks)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Failed to save sessions:", error)
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE() {
   try {
-    await clearTabs()
+    await clearTasks()
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Failed to clear sessions:", error)

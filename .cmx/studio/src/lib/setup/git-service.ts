@@ -1,6 +1,6 @@
-import { execSync } from "child_process"
+import { execFileSync } from "child_process"
 import { getSiteDirPath } from "./setup-state"
-import { getPipelineConfig, type PipelineConfig, type EnvironmentConfig } from "./pipeline-config"
+import { getPipelineConfig, type EnvironmentConfig } from "./pipeline-config"
 
 // ============================================================
 // 型定義
@@ -38,19 +38,19 @@ export interface GitStatus {
   commitsBehind: number
   /** 環境ステータス */
   environments: EnvironmentStatus[]
-  /** パイプラインモード */
-  pipelineMode: string
+  /** タスク完了時のワークフロー */
+  workflowMode: "direct" | "pr"
   /** エラーメッセージ */
   error?: string
 }
 
 // ============================================================
-// Git コマンド実行ヘルパー
+// Git コマンド実行ヘルパー（execFileSync でインジェクション対策）
 // ============================================================
 
-function git(args: string, cwd: string): string {
+function runGit(args: string[], cwd: string): string {
   try {
-    return execSync(`git ${args}`, {
+    return execFileSync("git", args, {
       cwd,
       encoding: "utf-8",
       timeout: 10000,
@@ -60,17 +60,25 @@ function git(args: string, cwd: string): string {
   }
 }
 
+/** runGit のエラーを投げるバージョン（成功必須のコマンド用） */
+function runGitStrict(args: string[], cwd: string): string {
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf-8",
+    timeout: 10000,
+  }).trim()
+}
+
 // ============================================================
 // Git 情報取得
 // ============================================================
 
 function getCurrentBranch(cwd: string): string {
-  return git("rev-parse --abbrev-ref HEAD", cwd) || "unknown"
+  return runGit(["rev-parse", "--abbrev-ref", "HEAD"], cwd) || "unknown"
 }
 
 function getChangedFiles(cwd: string): ChangedFile[] {
-  // staged + unstaged + untracked
-  const statusOutput = git("status --porcelain", cwd)
+  const statusOutput = runGit(["status", "--porcelain"], cwd)
   if (!statusOutput) return []
 
   return statusOutput.split("\n").filter(Boolean).map((line) => ({
@@ -80,11 +88,10 @@ function getChangedFiles(cwd: string): ChangedFile[] {
 }
 
 function getAheadBehind(cwd: string, branch: string, target: string): { ahead: number; behind: number } {
-  // ターゲットブランチが存在するか確認
-  const targetExists = git(`rev-parse --verify ${target}`, cwd)
+  const targetExists = runGit(["rev-parse", "--verify", target], cwd)
   if (!targetExists) return { ahead: 0, behind: 0 }
 
-  const result = git(`rev-list --left-right --count ${branch}...${target}`, cwd)
+  const result = runGit(["rev-list", "--left-right", "--count", `${branch}...${target}`], cwd)
   if (!result) return { ahead: 0, behind: 0 }
 
   const [ahead, behind] = result.split("\t").map(Number)
@@ -92,16 +99,15 @@ function getAheadBehind(cwd: string, branch: string, target: string): { ahead: n
 }
 
 function getEnvironmentStatus(cwd: string, env: EnvironmentConfig): EnvironmentStatus {
-  // ブランチが存在するか確認
-  const exists = !!git(`rev-parse --verify ${env.branch}`, cwd)
+  const exists = !!runGit(["rev-parse", "--verify", env.branch], cwd)
 
   if (!exists) {
     return { ...env, commitHash: null, commitMessage: null, commitDate: null, exists: false }
   }
 
-  const commitHash = git(`log -1 --format=%h ${env.branch}`, cwd) || null
-  const commitMessage = git(`log -1 --format=%s ${env.branch}`, cwd) || null
-  const commitDate = git(`log -1 --format=%ar ${env.branch}`, cwd) || null
+  const commitHash = runGit(["log", "-1", "--format=%h", env.branch], cwd) || null
+  const commitMessage = runGit(["log", "-1", "--format=%s", env.branch], cwd) || null
+  const commitDate = runGit(["log", "-1", "--format=%ar", env.branch], cwd) || null
 
   return { ...env, commitHash, commitMessage, commitDate, exists: true }
 }
@@ -130,7 +136,7 @@ export function getGitStatus(): GitStatus {
       commitsAhead: ahead,
       commitsBehind: behind,
       environments,
-      pipelineMode: pipeline.mode,
+      workflowMode: pipeline.workflowMode,
     }
   } catch (error) {
     return {
@@ -141,7 +147,7 @@ export function getGitStatus(): GitStatus {
       commitsAhead: 0,
       commitsBehind: 0,
       environments: [],
-      pipelineMode: pipeline.mode,
+      workflowMode: pipeline.workflowMode,
       error: error instanceof Error ? error.message : "Git情報の取得に失敗しました",
     }
   }
@@ -152,23 +158,32 @@ export function getGitStatus(): GitStatus {
 // ============================================================
 
 /**
- * ブランチを作成（現在のブランチから分岐）
+ * ブランチを作成して切り替え（必ず develop から分岐）
+ * develop が存在しない場合は現在のブランチから develop を作成する
  */
 export function createBranch(branchName: string): { success: boolean; error?: string } {
   const siteDir = getSiteDirPath()
+  const pipeline = getPipelineConfig()
 
-  // 既に存在するか確認
-  const exists = !!git(`rev-parse --verify ${branchName}`, siteDir)
+  const exists = !!runGit(["rev-parse", "--verify", branchName], siteDir)
   if (exists) {
-    return { success: true } // 既に存在するなら成功扱い
+    try {
+      runGitStrict(["checkout", branchName], siteDir)
+    } catch {
+      // 既にそのブランチにいる場合
+    }
+    return { success: true }
   }
 
   try {
-    execSync(`git branch ${branchName}`, {
-      cwd: siteDir,
-      encoding: "utf-8",
-      timeout: 10000,
-    })
+    // develop ブランチ自体の作成の場合は現在のブランチから
+    if (branchName === pipeline.targetBranch) {
+      runGitStrict(["checkout", "-b", branchName], siteDir)
+    } else {
+      // タスクブランチなどは必ず develop を起点にする
+      runGitStrict(["checkout", pipeline.targetBranch], siteDir)
+      runGitStrict(["checkout", "-b", branchName], siteDir)
+    }
     return { success: true }
   } catch (error) {
     return {
@@ -185,10 +200,153 @@ export function getGitDiffSummary(): string {
   const siteDir = getSiteDirPath()
   const pipeline = getPipelineConfig()
 
-  // target ブランチとの diff stat
-  const diffStat = git(`diff --stat ${pipeline.targetBranch}...HEAD`, siteDir)
+  const diffStat = runGit(["diff", "--stat", `${pipeline.targetBranch}...HEAD`], siteDir)
   if (diffStat) return diffStat
 
-  // target がない場合は working tree の diff
-  return git("diff --stat", siteDir) || "変更なし"
+  return runGit(["diff", "--stat"], siteDir) || "変更なし"
+}
+
+// ============================================================
+// タスク管理（チェックポイント・ブランチ切替）
+// ============================================================
+
+/** タスク用のブランチ名を生成 */
+export function getTaskBranchName(taskId: string): string {
+  return `cmx/task-${taskId}`
+}
+
+/**
+ * 現在のブランチの変更を自動チェックポイントコミット
+ * 変更がなければ何もしない
+ */
+export function checkpoint(taskId: string): { committed: boolean; hash: string | null } {
+  const cwd = getSiteDirPath()
+
+  // 危険ファイルを除外してステージ
+  runGit(
+    ["add", "-A", "--", ".", ":(exclude).env", ":(exclude).env.*", ":(exclude)**/*.pem", ":(exclude)**/*.key"],
+    cwd
+  )
+
+  // ステージに差分があるか確認
+  try {
+    runGitStrict(["diff", "--cached", "--quiet"], cwd)
+    // exit 0 = 差分なし
+    return { committed: false, hash: null }
+  } catch {
+    // exit 1 = 差分あり → コミット
+  }
+
+  try {
+    runGitStrict(
+      ["commit", "--no-verify", "-m", `chore(cmx): checkpoint task:${taskId}`],
+      cwd
+    )
+    const hash = runGit(["rev-parse", "--short", "HEAD"], cwd)
+    return { committed: true, hash }
+  } catch (error) {
+    // user.name/email 未設定等
+    return { committed: false, hash: null }
+  }
+}
+
+/**
+ * タスク切り替え: 現在のブランチをチェックポイントし、指定ブランチに切り替え
+ */
+export function switchTask(params: {
+  fromTaskId: string
+  toTaskId: string
+  toBranch: string | null
+}): { success: boolean; checkpointHash: string | null; error?: string } {
+  const cwd = getSiteDirPath()
+  const pipeline = getPipelineConfig()
+
+  try {
+    // 1) 現在のブランチの変更をチェックポイント
+    const { hash } = checkpoint(params.fromTaskId)
+
+    // 2) 切り替え先ブランチを決定
+    const targetBranch = params.toBranch || pipeline.targetBranch
+
+    // 3) ブランチが存在するか確認、なければ develop から作成
+    const branchExists = !!runGit(["rev-parse", "--verify", targetBranch], cwd)
+    if (!branchExists) {
+      // develop に一旦切り替えてから新ブランチを作成
+      runGitStrict(["checkout", pipeline.targetBranch], cwd)
+      runGitStrict(["checkout", "-b", targetBranch], cwd)
+    } else {
+      runGitStrict(["checkout", targetBranch], cwd)
+    }
+
+    return { success: true, checkpointHash: hash }
+  } catch (error) {
+    return {
+      success: false,
+      checkpointHash: null,
+      error: error instanceof Error ? error.message : "タスク切り替えに失敗しました",
+    }
+  }
+}
+
+/**
+ * タスクの変更を develop に反映（直接マージモード）
+ * checkpoint コミットを squash して 1 コミットにまとめる
+ */
+export function applyTaskDirect(params: {
+  taskId: string
+  branchName: string
+  summary: string
+}): { success: boolean; error?: string } {
+  const cwd = getSiteDirPath()
+  const pipeline = getPipelineConfig()
+
+  try {
+    // 1) 未コミットの変更をチェックポイント
+    checkpoint(params.taskId)
+
+    // 2) develop に切り替え
+    runGitStrict(["checkout", pipeline.targetBranch], cwd)
+
+    // 3) squash マージ
+    runGitStrict(["merge", "--squash", params.branchName], cwd)
+
+    // 4) コミット（squash の結果）
+    const message = params.summary || `feat: task ${params.taskId}`
+    runGitStrict(["commit", "-m", message], cwd)
+
+    // 5) タスクブランチを削除
+    runGit(["branch", "-D", params.branchName], cwd)
+
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "マージに失敗しました",
+    }
+  }
+}
+
+/**
+ * タスクのブランチをリモートにプッシュ（PR モード）
+ */
+export function pushTaskBranch(params: {
+  taskId: string
+  branchName: string
+}): { success: boolean; error?: string } {
+  const cwd = getSiteDirPath()
+
+  try {
+    // 未コミットの変更をチェックポイント
+    checkpoint(params.taskId)
+
+    // プッシュ
+    runGitStrict(["push", "-u", "origin", params.branchName], cwd)
+
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "プッシュに失敗しました",
+    }
+  }
 }

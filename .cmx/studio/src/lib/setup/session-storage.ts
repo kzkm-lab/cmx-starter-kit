@@ -8,63 +8,68 @@ export interface Message {
   content: string
 }
 
-export interface ChatTab {
+/** タスクの状態 */
+export type TaskStatus = "idle" | "working" | "paused" | "done"
+
+/** チャット（会話単位） */
+export interface Chat {
   id: string
   title: string
   messages: Message[]
+  /** Claude Code セッション ID */
   sessionId: string | null
+}
+
+/** タスク（作業単位 = ブランチ） */
+export interface Task {
+  id: string
+  title: string
+  /** 紐づくブランチ名（例: cmx/task-{id}）。null = develop 上で直接作業 */
+  branchName: string | null
+  /** タスクの状態 */
+  status: TaskStatus
+  /** タスク内のチャット一覧 */
+  chats: Chat[]
+  /** アクティブなチャットの ID */
+  activeChatId: string
 }
 
 const STORAGE_KEY = "cmx-dev-chat-sessions"
 
 /**
- * すべてのタブ情報を localStorage に保存
+ * すべてのタスク情報を localStorage に保存
  */
-export function saveTabs(tabs: ChatTab[]): void {
+export function saveTasks(tasks: Task[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
   } catch (error) {
-    console.error("Failed to save tabs to localStorage:", error)
+    console.error("Failed to save tasks to localStorage:", error)
   }
 }
 
 /**
- * localStorage からタブ情報を復元
+ * localStorage からタスク情報を復元
  */
-export function loadTabs(): ChatTab[] | null {
+export function loadTasks(): Task[] | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return null
 
-    const tabs = JSON.parse(stored) as ChatTab[]
-    return tabs
+    const tasks = JSON.parse(stored) as Task[]
+    return tasks
   } catch (error) {
-    console.error("Failed to load tabs from localStorage:", error)
+    console.error("Failed to load tasks from localStorage:", error)
     return null
   }
 }
 
 /**
- * localStorage のタブ情報をクリア
+ * localStorage のタスク情報をクリア
  */
-export function clearTabs(): void {
+export function clearTasks(): void {
   try {
     localStorage.removeItem(STORAGE_KEY)
   } catch (error) {
-    console.error("Failed to clear tabs from localStorage:", error)
+    console.error("Failed to clear tasks from localStorage:", error)
   }
-}
-
-/**
- * 特定のタブ情報を更新
- */
-export function updateTab(tabId: string, updater: (tab: ChatTab) => ChatTab): void {
-  const tabs = loadTabs()
-  if (!tabs) return
-
-  const updatedTabs = tabs.map((tab) =>
-    tab.id === tabId ? updater(tab) : tab
-  )
-
-  saveTabs(updatedTabs)
 }
