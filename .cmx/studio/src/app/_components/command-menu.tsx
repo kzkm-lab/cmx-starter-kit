@@ -84,7 +84,7 @@ export function CommandMenu({ onCommandSelect }: CommandMenuProps) {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 gap-1.5 text-xs font-medium text-slate-500 border-slate-200 hover:text-slate-700 hover:border-slate-300"
+          className="h-8 gap-1.5 text-xs font-medium"
         >
           <Terminal className="h-3.5 w-3.5" />
           Commands
@@ -92,26 +92,26 @@ export function CommandMenu({ onCommandSelect }: CommandMenuProps) {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80 p-0 bg-white"
+        className="w-80 p-0"
         sideOffset={8}
       >
-        <div className="px-4 py-3 border-b border-slate-200">
-          <h3 className="font-semibold text-sm text-slate-900">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="font-semibold text-sm text-foreground">
             Custom Commands
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             プロジェクトのカスタムコマンド
           </p>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : groups.length === 0 ? (
           <div className="px-4 py-12 text-center">
-            <Terminal className="h-8 w-8 mx-auto text-slate-300 mb-2" />
-            <p className="text-sm text-slate-500">
+            <Terminal className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">
               カスタムコマンドがありません
             </p>
           </div>
@@ -123,13 +123,13 @@ export function CommandMenu({ onCommandSelect }: CommandMenuProps) {
                   {/* カテゴリヘッダー */}
                   <button
                     onClick={() => toggleCategory(group.category)}
-                    className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-accent transition-colors"
                   >
-                    <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       {group.category}
                     </span>
                     <ChevronRight
-                      className={`h-4 w-4 text-slate-400 transition-transform ${
+                      className={`h-4 w-4 text-muted-foreground transition-transform ${
                         expandedCategories.has(group.category)
                           ? "rotate-90"
                           : ""
@@ -144,14 +144,14 @@ export function CommandMenu({ onCommandSelect }: CommandMenuProps) {
                         <button
                           key={command.id}
                           onClick={() => handleCommandClick(command)}
-                          className="w-full flex items-start gap-3 px-6 py-2.5 text-left hover:bg-slate-900 hover:text-white transition-colors group"
+                          className="w-full flex items-start gap-3 px-6 py-2.5 text-left hover:bg-blue-600 hover:text-white transition-colors group"
                         >
-                          <Terminal className="h-4 w-4 mt-0.5 text-slate-400 group-hover:text-white/70 flex-shrink-0" />
+                          <Terminal className="h-4 w-4 mt-0.5 text-muted-foreground group-hover:text-white/70 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-slate-900 group-hover:text-white truncate">
+                            <div className="text-sm font-medium text-foreground group-hover:text-white truncate">
                               {command.name}
                             </div>
-                            <div className="text-xs text-slate-500 group-hover:text-white/70 mt-0.5 line-clamp-2">
+                            <div className="text-xs text-muted-foreground group-hover:text-white/70 mt-0.5 line-clamp-2">
                               {command.description}
                             </div>
                           </div>

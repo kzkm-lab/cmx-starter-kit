@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
   title: "CMX Starter Kit Setup",
@@ -12,8 +13,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ja">
-      <body className="antialiased">{children}</body>
+    <html lang="ja" suppressHydrationWarning>
+      <body className="antialiased bg-background text-foreground">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   )
 }

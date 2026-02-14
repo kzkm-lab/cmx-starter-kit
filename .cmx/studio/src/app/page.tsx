@@ -5,6 +5,7 @@ import { PreviewFrame } from "./_components/preview-frame"
 import { UrlBar } from "./_components/url-bar"
 import { ChatInterface } from "./_components/chat-interface"
 import { AuthStatus } from "./_components/auth-status"
+import { ThemeToggle } from "./_components/theme-toggle"
 import { ExternalLink, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,8 +62,8 @@ export default function SetupPage() {
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col">
       {/* 一番上のヘッダー（全体） */}
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-50/50 border-b border-slate-200">
-        <h1 className="text-sm font-semibold text-slate-900">CMX Starter Kit - Development Console</h1>
+      <div className="flex items-center justify-between px-4 py-2 bg-secondary border-b border-border">
+        <h1 className="text-sm font-semibold text-foreground">CMX Starter Kit - Development Console</h1>
         <div className="flex items-center gap-2">
           <AuthStatus />
           <Button
@@ -74,6 +75,7 @@ export default function SetupPage() {
             <ExternalLink className="h-3.5 w-3.5" />
             Admin を開く
           </Button>
+          <ThemeToggle />
           <Button
             variant="outline"
             size="sm"
@@ -110,7 +112,7 @@ export default function SetupPage() {
         </ResizablePanel>
 
         {/* リサイズハンドル */}
-        <ResizableHandle withHandle className="w-1 bg-slate-900 hover:bg-slate-700" />
+        <ResizableHandle withHandle className="w-1 bg-border hover:bg-muted-foreground" />
 
         {/* 右側: チャットインターフェース */}
         <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>

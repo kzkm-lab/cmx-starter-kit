@@ -79,7 +79,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] p-0 gap-0 flex flex-col bg-white">
+      <DialogContent className="max-w-3xl max-h-[85vh] p-0 gap-0 flex flex-col">
         <div className="px-8 pt-8 pb-6 border-b">
           <DialogHeader>
             <DialogTitle>設定</DialogTitle>
@@ -116,7 +116,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {envConfigured === null ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto" />
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
                   <p className="mt-4 text-sm text-muted-foreground">
                     環境変数を確認中...
                   </p>
@@ -144,7 +144,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {siteConfigured === null ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto" />
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
                   <p className="mt-4 text-sm text-muted-foreground">
                     サイト設定を確認中...
                   </p>

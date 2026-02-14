@@ -49,20 +49,20 @@ async function readCommandsRecursive(
             .replace(/\.md$/, "")
             .replace(/\\/g, "/")
 
-          // name がない場合はファイル名から生成
+          // ファイル名（拡張子除く）をそのまま使用
           const fileName = entry.name.replace(/\.md$/, "")
           const displayName = (data.name as string) || fileName
-            .replace(/^\d+_/, "") // 先頭の数字とアンダースコアを削除
-            .replace(/[-_]/g, " ") // ハイフンとアンダースコアをスペースに
-            .split(" ")
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ")
+
+          // カテゴリをディレクトリ階層から取得
+          const pathParts = relativePath.split(path.sep)
+          const dirPath = pathParts.slice(0, -1).join("/")
+          const category = (data.category as string) || dirPath || "root"
 
           commands.push({
             id: commandId,
             name: displayName,
             description: (data.description as string) || "",
-            category: (data.category as string) || "その他",
+            category: category,
             tags: (data.tags as string[]) || [],
             path: relativePath,
           })

@@ -40,12 +40,12 @@ export function UrlBar({
   }
 
   return (
-    <div className="flex items-center gap-2 px-4 py-3 bg-white border-b-[4px] border-slate-900">
+    <div className="flex items-center gap-2 px-4 py-3 bg-secondary border-b-[4px] border-border">
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          className="h-8 w-8"
           onClick={onBack}
           disabled={!onBack}
         >
@@ -54,7 +54,7 @@ export function UrlBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          className="h-8 w-8"
           onClick={onForward}
           disabled={!onForward}
         >
@@ -63,7 +63,7 @@ export function UrlBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          className="h-8 w-8"
           onClick={onRefresh}
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -71,7 +71,7 @@ export function UrlBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          className="h-8 w-8"
           onClick={onHome}
         >
           <Home className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function UrlBar({
           <Input
             value={editingUrl}
             onChange={(e) => setEditingUrl(e.target.value)}
-            className="h-9 bg-slate-50/50 border-transparent hover:border-slate-200 focus:bg-white focus:border-slate-300 transition-all text-sm text-slate-700 shadow-sm font-medium placeholder:text-slate-400"
+            className="h-9 shadow-sm font-medium"
             placeholder="Enter URL..."
           />
         </div>
