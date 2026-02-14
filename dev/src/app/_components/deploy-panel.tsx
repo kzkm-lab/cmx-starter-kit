@@ -87,6 +87,17 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
 
   const { currentBranch, targetBranch, changedFiles, commitsAhead, environments } = gitStatus
 
+  // develop ブランチが存在するか
+  const targetEnv = environments.find((e) => e.branch === targetBranch)
+  const targetExists = targetEnv?.exists ?? false
+
+  // 「開発ブランチを作成」ハンドラ
+  const handleCreateDevelop = () => {
+    onSendMessage(
+      `${targetBranch} ブランチを現在のブランチ (${currentBranch}) から作成してください。git branch ${targetBranch} を実行してください。`
+    )
+  }
+
   // 「開発に送る」ボタンのハンドラ
   const handleSendToDevelop = () => {
     onSendMessage(
@@ -195,27 +206,44 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
           </div>
 
           {/* アクションボタン */}
-          <div className="flex items-center gap-2 pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-[11px] gap-1"
-              onClick={handleViewChanges}
-              disabled={isLoading}
-            >
-              <Eye className="w-3 h-3" />
-              変更を確認
-            </Button>
-            <Button
-              size="sm"
-              className="h-7 text-[11px] gap-1"
-              onClick={handleSendToDevelop}
-              disabled={isLoading || (changedFiles.length === 0 && commitsAhead === 0)}
-            >
-              <Send className="w-3 h-3" />
-              開発に送る
-            </Button>
-          </div>
+          {!targetExists ? (
+            <div className="pt-1 space-y-2">
+              <p className="text-[10px] text-amber-600">
+                開発ブランチ ({targetBranch}) がありません。作成すると変更管理を開始できます。
+              </p>
+              <Button
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={handleCreateDevelop}
+                disabled={isLoading}
+              >
+                <GitBranch className="w-3 h-3" />
+                開発ブランチを作成
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={handleViewChanges}
+                disabled={isLoading}
+              >
+                <Eye className="w-3 h-3" />
+                変更を確認
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={handleSendToDevelop}
+                disabled={isLoading || (changedFiles.length === 0 && commitsAhead === 0)}
+              >
+                <Send className="w-3 h-3" />
+                開発に送る
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
