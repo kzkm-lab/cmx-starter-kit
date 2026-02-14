@@ -37,6 +37,8 @@ export interface Task {
   chats: Chat[]
   /** アクティブなチャットの ID */
   activeChatId: string
+  /** アーカイブ状態 */
+  archived?: boolean
 }
 
 /**

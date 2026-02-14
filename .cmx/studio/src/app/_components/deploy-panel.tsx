@@ -38,6 +38,10 @@ interface DeployPanelProps {
   onSyncFromDevelop?: () => void
   /** develop から同期中フラグ */
   isSyncingFromDevelop?: boolean
+  /** develop に切り替えハンドラ */
+  onSwitchToDevelop?: () => void
+  /** develop に切り替え中フラグ */
+  isSwitchingToDevelop?: boolean
 }
 
 /** ファイルステータスに対応するアイコン */
@@ -65,6 +69,8 @@ export function DeployPanel({
   onPushTask,
   onSyncFromDevelop,
   isSyncingFromDevelop = false,
+  onSwitchToDevelop,
+  isSwitchingToDevelop = false,
 }: DeployPanelProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null)

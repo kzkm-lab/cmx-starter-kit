@@ -325,8 +325,7 @@ export function applyTaskDirect(params: {
     const message = params.summary || `feat: task ${params.taskId}`
     runGitStrict(["commit", "-m", message], cwd)
 
-    // 5) タスクブランチを削除
-    runGit(["branch", "-D", params.branchName], cwd)
+    // 注: ブランチは削除せず保持する（アーカイブ機能のため）
 
     return { success: true }
   } catch (error) {
