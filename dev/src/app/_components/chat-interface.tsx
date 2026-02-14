@@ -8,6 +8,7 @@ import { SettingsDialog } from "./settings-dialog"
 import { CommandMenu, type CommandMetadata } from "./command-menu"
 import { AlertCircle, SendHorizontal, Terminal, Loader2 } from "lucide-react"
 import { TodoPanel } from "./todo-panel"
+import { DeployPanel } from "./deploy-panel"
 import type { TodoItem } from "@/lib/setup/claude-code-cli"
 
 interface Message {
@@ -212,13 +213,12 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading || !isAuthenticated) return
+  // メッセージ送信の共通ロジック（DeployPanel からも呼ばれる）
+  const sendMessage = async (message: string) => {
+    if (!message.trim() || isLoading || !isAuthenticated) return
 
-    const userMessage: Message = { role: "user", content: input }
+    const userMessage: Message = { role: "user", content: message }
     updateTabMessages(activeTabId, (prev) => [...prev, userMessage])
-    setInput("")
     setIsLoading(true)
 
     try {
@@ -226,7 +226,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input,
+          message,
           sessionId: activeTab.sessionId,
         }),
       })
@@ -324,11 +324,19 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim()) return
+    const message = input
+    setInput("")
+    await sendMessage(message)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Cmd+Enter または Ctrl+Enter で送信
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
-      handleSubmit(e as any)
+      handleSubmit(e)
     }
   }
 
@@ -418,12 +426,17 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               </div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400">
-            <Terminal className="w-12 h-12 mb-4 opacity-20" />
-            <p className="text-sm">Ready to assist. Type a command or request.</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-6">
+            <DeployPanel onSendMessage={sendMessage} isLoading={isLoading} />
+            <div className="flex flex-col items-center">
+              <Terminal className="w-12 h-12 mb-4 opacity-20" />
+              <p className="text-sm">Ready to assist. Type a command or request.</p>
+            </div>
           </div>
         ) : (
           <div className="space-y-6 max-w-3xl mx-auto">
+            {/* デプロイパネル */}
+            <DeployPanel onSendMessage={sendMessage} isLoading={isLoading} />
             {messages.map((message, index) => (
               <div key={index} className={`group flex gap-4 ${message.role === 'user' ? 'pt-4 border-t border-slate-100 mt-4 first:mt-0 first:border-0 first:pt-0' : ''}`}>
                  <div className={`flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold mt-0.5
