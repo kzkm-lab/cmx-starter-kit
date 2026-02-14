@@ -34,6 +34,10 @@ interface DeployPanelProps {
   onApplyTask: () => void
   /** PR 用プッシュハンドラ */
   onPushTask: () => void
+  /** develop から同期ハンドラ */
+  onSyncFromDevelop?: () => void
+  /** develop から同期中フラグ */
+  isSyncingFromDevelop?: boolean
 }
 
 /** ファイルステータスに対応するアイコン */
@@ -59,6 +63,8 @@ export function DeployPanel({
   taskStatus,
   onApplyTask,
   onPushTask,
+  onSyncFromDevelop,
+  isSyncingFromDevelop = false,
 }: DeployPanelProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null)
@@ -229,6 +235,18 @@ export function DeployPanel({
             /* タスクブランチ上: 反映 or PR */
             <div className="space-y-2">
               <div className="flex items-center gap-2 pt-1">
+                {onSyncFromDevelop && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11px] gap-1"
+                    onClick={onSyncFromDevelop}
+                    disabled={isLoading || isSyncingFromDevelop}
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSyncingFromDevelop ? "animate-spin" : ""}`} />
+                    {isSyncingFromDevelop ? "同期中..." : "developと同期"}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"

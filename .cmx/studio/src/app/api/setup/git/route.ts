@@ -6,6 +6,8 @@ import {
   switchTask,
   applyTaskDirect,
   pushTaskBranch,
+  switchToDevelop,
+  syncFromDevelop,
 } from "@/lib/setup/git-service"
 
 export const runtime = "nodejs"
@@ -84,6 +86,27 @@ export async function POST(request: NextRequest) {
           return Response.json({ error: "taskId and branchName are required" }, { status: 400 })
         }
         const result = pushTaskBranch({ taskId, branchName })
+        if (!result.success) {
+          return Response.json({ error: result.error }, { status: 500 })
+        }
+        return Response.json({ success: true })
+      }
+
+      case "switch-to-develop": {
+        const { taskId } = body
+        const result = switchToDevelop(taskId)
+        if (!result.success) {
+          return Response.json({ error: result.error }, { status: 500 })
+        }
+        return Response.json({ success: true })
+      }
+
+      case "sync-from-develop": {
+        const { taskId } = body
+        if (!taskId) {
+          return Response.json({ error: "taskId is required" }, { status: 400 })
+        }
+        const result = syncFromDevelop(taskId)
         if (!result.success) {
           return Response.json({ error: result.error }, { status: 500 })
         }

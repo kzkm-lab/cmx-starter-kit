@@ -98,6 +98,10 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   const [branchReady, setBranchReady] = useState<boolean | null>(null)
   const [isCreatingBranch, setIsCreatingBranch] = useState(false)
   const [targetBranchName, setTargetBranchName] = useState("develop")
+  const [isDevelopOrDerived, setIsDevelopOrDerived] = useState<boolean>(false)
+  const [currentBranch, setCurrentBranch] = useState<string>("")
+  const [isSwitchingToDevelop, setIsSwitchingToDevelop] = useState(false)
+  const [isSyncingFromDevelop, setIsSyncingFromDevelop] = useState(false)
 
   // セッション復元済みフラグ
   const [sessionsLoaded, setSessionsLoaded] = useState(false)
@@ -213,15 +217,19 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         const data = await response.json()
         if (data.error) {
           setBranchReady(false)
+          setIsDevelopOrDerived(false)
           return
         }
         setTargetBranchName(data.targetBranch || "develop")
+        setCurrentBranch(data.currentBranch || "")
+        setIsDevelopOrDerived(data.isDevelopOrDerived ?? false)
         const targetEnv = data.environments?.find(
           (e: { branch: string; exists: boolean }) => e.branch === data.targetBranch
         )
         setBranchReady(targetEnv?.exists ?? false)
       } catch {
         setBranchReady(false)
+        setIsDevelopOrDerived(false)
       }
     }
     checkBranch()
@@ -254,11 +262,70 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       const data = await response.json()
       if (data.success) {
         setBranchReady(true)
+        setIsDevelopOrDerived(true)
       }
     } catch (error) {
       console.error("Failed to create branch:", error)
     } finally {
       setIsCreatingBranch(false)
+    }
+  }
+
+  // develop ブランチに切り替え
+  const handleSwitchToDevelop = async () => {
+    setIsSwitchingToDevelop(true)
+    try {
+      const response = await fetch("/api/setup/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "switch-to-develop",
+          taskId: activeTaskId || undefined,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setIsDevelopOrDerived(true)
+        setCurrentBranch(targetBranchName)
+        // ブランチ情報を再取得
+        const statusResponse = await fetch("/api/setup/git")
+        const statusData = await statusResponse.json()
+        if (!statusData.error) {
+          setIsDevelopOrDerived(statusData.isDevelopOrDerived ?? false)
+          setCurrentBranch(statusData.currentBranch || "")
+        }
+      }
+    } catch (error) {
+      console.error("Failed to switch to develop:", error)
+    } finally {
+      setIsSwitchingToDevelop(false)
+    }
+  }
+
+  // develop から最新を同期（rebase）
+  const handleSyncFromDevelop = async () => {
+    if (!activeTaskId) return
+    setIsSyncingFromDevelop(true)
+    try {
+      const response = await fetch("/api/setup/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "sync-from-develop",
+          taskId: activeTaskId,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        alert("develop の最新が取り込まれました")
+      } else {
+        alert(`同期に失敗しました: ${data.error || "不明なエラー"}`)
+      }
+    } catch (error) {
+      console.error("Failed to sync from develop:", error)
+      alert("同期に失敗しました")
+    } finally {
+      setIsSyncingFromDevelop(false)
     }
   }
 
@@ -695,7 +762,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     <div className="flex flex-col h-full">
 
       {/* タスクバー（タスク切り替え + ステータス）— develop ブランチ準備完了時のみ表示 */}
-      {isAuthenticated && envConfigured && branchReady && (
+      {isAuthenticated && envConfigured && branchReady && isDevelopOrDerived && (
         <div className="border-b border-slate-200 bg-slate-50/50 px-2 flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {tasks.map((task) => (
             <div
@@ -751,7 +818,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       )}
 
       {/* タスクヘッダー: ブランチ状態 + アクションボタン（環境準備完了時のみ） */}
-      {isAuthenticated && envConfigured && branchReady && activeTask && (
+      {isAuthenticated && envConfigured && branchReady && isDevelopOrDerived && activeTask && (
         <div className="border-b border-slate-100">
           <DeployPanel
             onSendMessage={sendMessage}
@@ -760,12 +827,14 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
             taskStatus={activeTask.status}
             onApplyTask={handleApplyTask}
             onPushTask={handlePushTask}
+            onSyncFromDevelop={handleSyncFromDevelop}
+            isSyncingFromDevelop={isSyncingFromDevelop}
           />
         </div>
       )}
 
       {/* チャットタブ（タスク内の会話切り替え） */}
-      {isAuthenticated && envConfigured && branchReady && activeTask && (
+      {isAuthenticated && envConfigured && branchReady && isDevelopOrDerived && activeTask && (
         <div className="border-b border-slate-100 bg-white px-2 flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
           <MessageSquare className="w-3 h-3 text-slate-300 mx-1 flex-shrink-0" />
           {activeTask.chats.filter((c) => !c.archived).map((chat) => (
@@ -889,6 +958,33 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   <GitBranch className="w-3.5 h-3.5" />
                 )}
                 {isCreatingBranch ? "作成中..." : "開発ブランチを作成"}
+              </Button>
+            </div>
+          </div>
+        ) : !isDevelopOrDerived ? (
+          <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-4">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg max-w-md w-full space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+                <p className="font-semibold text-amber-900">開発ブランチに切り替えてください</p>
+              </div>
+              <p className="text-sm text-amber-800">
+                現在のブランチ（<code className="bg-amber-100 px-1 rounded text-xs">{currentBranch}</code>）では Studio を使用できません。
+                開発ブランチ（<code className="bg-amber-100 px-1 rounded text-xs">{targetBranchName}</code>）またはその派生ブランチに切り替える必要があります。
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 bg-white border-amber-200 text-amber-900 hover:bg-amber-100"
+                onClick={handleSwitchToDevelop}
+                disabled={isSwitchingToDevelop}
+              >
+                {isSwitchingToDevelop ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <GitBranch className="w-3.5 h-3.5" />
+                )}
+                {isSwitchingToDevelop ? "切り替え中..." : `${targetBranchName} に切り替え`}
               </Button>
             </div>
           </div>

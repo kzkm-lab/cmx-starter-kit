@@ -40,6 +40,8 @@ export interface GitStatus {
   environments: EnvironmentStatus[]
   /** タスク完了時のワークフロー */
   workflowMode: "direct" | "pr"
+  /** develop または develop 派生ブランチかどうか */
+  isDevelopOrDerived: boolean
   /** エラーメッセージ */
   error?: string
 }
@@ -128,6 +130,11 @@ export function getGitStatus(): GitStatus {
       getEnvironmentStatus(siteDir, env)
     )
 
+    // develop または develop 派生ブランチ（cmx/task-* など）かどうかを判定
+    const isDevelopOrDerived =
+      currentBranch === pipeline.targetBranch ||
+      currentBranch.startsWith("cmx/task-")
+
     return {
       currentBranch,
       targetBranch: pipeline.targetBranch,
@@ -137,6 +144,7 @@ export function getGitStatus(): GitStatus {
       commitsBehind: behind,
       environments,
       workflowMode: pipeline.workflowMode,
+      isDevelopOrDerived,
     }
   } catch (error) {
     return {
@@ -148,6 +156,7 @@ export function getGitStatus(): GitStatus {
       commitsBehind: 0,
       environments: [],
       workflowMode: pipeline.workflowMode,
+      isDevelopOrDerived: false,
       error: error instanceof Error ? error.message : "Git情報の取得に失敗しました",
     }
   }
@@ -159,13 +168,14 @@ export function getGitStatus(): GitStatus {
 
 /**
  * ブランチを作成して切り替え（必ず develop から分岐）
- * develop が存在しない場合は現在のブランチから develop を作成する
+ * develop が存在しない場合は main から develop を作成する
  */
 export function createBranch(branchName: string): { success: boolean; error?: string } {
   const siteDir = getSiteDirPath()
   const pipeline = getPipelineConfig()
 
-  const exists = !!runGit(["rev-parse", "--verify", branchName], siteDir)
+  // ローカルブランチのみをチェック（リモートブランチの復活を防ぐ）
+  const exists = !!runGit(["rev-parse", "--verify", `refs/heads/${branchName}`], siteDir)
   if (exists) {
     try {
       runGitStrict(["checkout", branchName], siteDir)
@@ -176,8 +186,9 @@ export function createBranch(branchName: string): { success: boolean; error?: st
   }
 
   try {
-    // develop ブランチ自体の作成の場合は現在のブランチから
+    // develop ブランチ自体の作成の場合は main から作成
     if (branchName === pipeline.targetBranch) {
+      runGitStrict(["checkout", "main"], siteDir)
       runGitStrict(["checkout", "-b", branchName], siteDir)
     } else {
       // タスクブランチなどは必ず develop を起点にする
@@ -347,6 +358,58 @@ export function pushTaskBranch(params: {
     return {
       success: false,
       error: error instanceof Error ? error.message : "プッシュに失敗しました",
+    }
+  }
+}
+
+/**
+ * develop ブランチに切り替える
+ * 未コミットの変更がある場合は自動でチェックポイント
+ */
+export function switchToDevelop(taskId?: string): { success: boolean; error?: string } {
+  const cwd = getSiteDirPath()
+  const pipeline = getPipelineConfig()
+
+  try {
+    // 未コミットの変更があればチェックポイント
+    if (taskId) {
+      checkpoint(taskId)
+    }
+
+    // develop に切り替え
+    runGitStrict(["checkout", pipeline.targetBranch], cwd)
+
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "develop への切り替えに失敗しました",
+    }
+  }
+}
+
+/**
+ * 現在のブランチに develop の最新を取り込む（rebase）
+ * タスクブランチで作業中に develop の更新を取り込みたい場合に使用
+ */
+export function syncFromDevelop(taskId: string): { success: boolean; error?: string } {
+  const cwd = getSiteDirPath()
+  const pipeline = getPipelineConfig()
+
+  try {
+    // 未コミットの変更をチェックポイント
+    checkpoint(taskId)
+
+    // develop の最新を rebase
+    runGitStrict(["rebase", pipeline.targetBranch], cwd)
+
+    return { success: true }
+  } catch (error) {
+    // rebase が競合した場合
+    runGit(["rebase", "--abort"], cwd)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "develop との同期に失敗しました（競合の可能性）",
     }
   }
 }
