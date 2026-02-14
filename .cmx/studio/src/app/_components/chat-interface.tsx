@@ -116,9 +116,13 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   const [showArchivedDropdown, setShowArchivedDropdown] = useState(false)
   const [showArchivedTasksDropdown, setShowArchivedTasksDropdown] = useState(false)
 
-  // アクティブなタスク・チャットを取得（データ不整合時のフォールバック付き）
-  const activeTask = tasks.find((t) => t.id === activeTaskId) ?? tasks[0]
-  const activeChat = activeTask?.chats?.find((c) => c.id === activeTask.activeChatId) ?? activeTask?.chats?.[0]
+  // アクティブなタスク・チャットを取得
+  const activeTask = tasks.find((t) => t.id === activeTaskId) ?? null
+  const activeChat = activeTask
+    ? activeTask.chats.find((c) => c.id === activeTask.activeChatId && !c.archived) ??
+      activeTask.chats.find((c) => !c.archived) ??
+      null
+    : null
   const messages = activeChat?.messages ?? []
 
   // ============================================================
@@ -133,13 +137,16 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         const data = await response.json()
 
         if (data.tasks && Array.isArray(data.tasks) && data.tasks.length > 0) {
-          // chats 配列を持つ有効なタスクのみ復元
-          const validTasks = (data.tasks as Task[]).filter(
-            (t) => t.id && Array.isArray(t.chats) && t.chats.length > 0
-          )
+          // chats 配列を持つ有効なタスクのみ復元し、archived プロパティを正規化
+          const validTasks = (data.tasks as Task[])
+            .filter((t) => t.id && Array.isArray(t.chats) && t.chats.length > 0)
+            .map((t) => ({ ...t, archived: !!t.archived }))
+
           if (validTasks.length > 0) {
             setTasks(validTasks)
-            setActiveTaskId(validTasks[0].id)
+            // アーカイブされていないタスクを優先的に選択
+            const firstActiveTask = validTasks.find((t) => !t.archived)
+            setActiveTaskId(firstActiveTask?.id ?? "")
           }
         }
       } catch (error) {
@@ -297,9 +304,12 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
           setIsDevelopOrDerived(statusData.isDevelopOrDerived ?? false)
           setCurrentBranch(statusData.currentBranch || "")
         }
+      } else {
+        alert(`develop への切り替えに失敗しました: ${data.error || "不明なエラー"}`)
       }
     } catch (error) {
       console.error("Failed to switch to develop:", error)
+      alert("develop への切り替えに失敗しました。ネットワーク接続を確認してください。")
     } finally {
       setIsSwitchingToDevelop(false)
     }
@@ -399,9 +409,11 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         setActiveTaskId(newTaskId)
       } else {
         console.error("Failed to switch task:", data.error)
+        alert(`タスクの切り替えに失敗しました: ${data.error || "不明なエラー"}`)
       }
     } catch (error) {
       console.error("Failed to switch task:", error)
+      alert("タスクの切り替えに失敗しました。ネットワーク接続を確認してください。")
     }
   }
 
@@ -428,6 +440,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         const data = await response.json()
         if (!data.success) {
           console.error("Failed to create task:", data.error)
+          alert(`タスクの作成に失敗しました: ${data.error || "不明なエラー"}`)
           return
         }
         if (activeTask?.status === "working") {
@@ -443,6 +456,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         const data = await response.json()
         if (!data.success) {
           console.error("Failed to create branch:", data.error)
+          alert(`ブランチの作成に失敗しました: ${data.error || "不明なエラー"}`)
           return
         }
       }
@@ -451,6 +465,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       setActiveTaskId(newTask.id)
     } catch (error) {
       console.error("Failed to create task:", error)
+      alert("タスクの作成に失敗しました。ネットワーク接続を確認してください。")
     } finally {
       setIsCreatingTask(false)
     }
@@ -485,15 +500,54 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     setEditingTaskTitle("")
   }
 
+  /** タスクを切り替える（Git ブランチも同時に切り替え） */
+  const switchActiveTask = async (toTaskId: string): Promise<boolean> => {
+    const toTask = tasks.find((t) => t.id === toTaskId)
+    if (!toTask) return false
+
+    try {
+      const response = await fetch("/api/setup/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "switch-task",
+          fromTaskId: activeTaskId || "system",
+          toTaskId,
+          toBranch: toTask.branchName,
+        }),
+      })
+      const data = await response.json()
+      if (!data.success) {
+        console.error("Failed to switch task:", data.error)
+        return false
+      }
+
+      // 切替元を paused に
+      if (activeTask?.status === "working") {
+        updateTask(activeTaskId, (t) => ({ ...t, status: "paused" as const }))
+      }
+
+      setActiveTaskId(toTaskId)
+      return true
+    } catch (error) {
+      console.error("Failed to switch task:", error)
+      return false
+    }
+  }
+
   /** タスクをアーカイブする */
-  const archiveTask = (taskId: string) => {
+  const archiveTask = async (taskId: string) => {
     // タスクをアーカイブ
     updateTask(taskId, (task) => ({ ...task, archived: true, status: "done" as const }))
 
     // アーカイブ対象がアクティブタスクの場合、別の非アーカイブタスクに切り替え
     const activeTasks = tasks.filter((t) => !t.archived && t.id !== taskId)
     if (activeTasks.length > 0 && activeTaskId === taskId) {
-      setActiveTaskId(activeTasks[0].id)
+      // Git ブランチも含めて切り替え
+      const switched = await switchActiveTask(activeTasks[0].id)
+      if (!switched) {
+        alert("タスクの切り替えに失敗しました。develop ブランチのままになっています。")
+      }
     } else if (activeTasks.length === 0) {
       // すべてのタスクがアーカイブされた場合
       setActiveTaskId("")
@@ -505,36 +559,15 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
 
-    // タスクを復元
-    updateTask(taskId, (t) => ({ ...t, archived: false, status: "paused" as const }))
-
-    // 復元したタスクに切り替え
-    if (task.branchName && activeTaskId) {
-      try {
-        const response = await fetch("/api/setup/git", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "switch-task",
-            fromTaskId: activeTaskId,
-            toTaskId: taskId,
-            toBranch: task.branchName,
-          }),
-        })
-        const data = await response.json()
-        if (data.success) {
-          // 切替元を paused に
-          if (activeTask?.status === "working") {
-            updateTask(activeTaskId, (t) => ({ ...t, status: "paused" as const }))
-          }
-          setActiveTaskId(taskId)
-        }
-      } catch (error) {
-        console.error("Failed to switch to restored task:", error)
-      }
-    } else {
-      setActiveTaskId(taskId)
+    // まず Git ブランチ切り替えを試行（トランザクション的に）
+    const switched = await switchActiveTask(taskId)
+    if (!switched) {
+      alert("復元に失敗しました。ブランチ切り替えを確認してください。")
+      return
     }
+
+    // 切り替え成功後にタスクを復元
+    updateTask(taskId, (t) => ({ ...t, archived: false, status: "paused" as const }))
   }
 
   /** タスク反映（直接マージモード） */
@@ -560,8 +593,8 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       })
       const data = await response.json()
       if (data.success) {
-        // 成功したらタスクをアーカイブ
-        archiveTask(activeTaskId)
+        // 成功したらタスクをアーカイブ（別タスクへの切り替えを待つ）
+        await archiveTask(activeTaskId)
         alert("タスクが完了し、develop ブランチに反映されました")
       } else {
         alert(`反映に失敗しました: ${data.error || "不明なエラー"}`)
@@ -1152,7 +1185,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
             ))}
 
             {/* Todo Panel */}
-            {activeChat?.todos?.length > 0 && (
+            {activeChat?.todos && activeChat.todos.length > 0 && (
               <div className="mt-4">
                 <TodoPanel todos={activeChat.todos} />
               </div>
