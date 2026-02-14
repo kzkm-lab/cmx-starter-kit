@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "./settings-dialog"
 import { CommandMenu, type CommandMetadata } from "./command-menu"
 import { AlertCircle, SendHorizontal, Terminal, Loader2 } from "lucide-react"
+import { TodoPanel } from "./todo-panel"
+import type { TodoItem } from "@/lib/setup/claude-code-cli"
 
 interface Message {
   role: "user" | "assistant" | "system" | "tool"
@@ -19,6 +21,7 @@ type ChatTab = {
   title: string
   messages: Message[]
   sessionId: string | null
+  todos: TodoItem[]
 }
 
 interface ChatInterfaceProps {
@@ -33,6 +36,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       title: "Chat 1",
       messages: [],
       sessionId: null,
+      todos: [],
     },
   ])
   const [activeTabId, setActiveTabId] = useState("1")
@@ -146,6 +150,15 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     )
   }
 
+  // タブの todos 更新
+  const updateTabTodos = (tabId: string, todos: TodoItem[]) => {
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === tabId ? { ...tab, todos } : tab
+      )
+    )
+  }
+
   // 新しいタブを追加
   const addNewTab = () => {
     const newTabId = Date.now().toString()
@@ -154,6 +167,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       title: `Chat ${tabs.length + 1}`,
       messages: [],
       sessionId: null,
+      todos: [],
     }
     setTabs((prev) => [...prev, newTab])
     setActiveTabId(newTabId)
@@ -279,6 +293,8 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   }
                   return newMessages
                 })
+              } else if (data.type === "todo_update" && data.todos) {
+                updateTabTodos(activeTabId, data.todos)
               } else if (data.type === "error") {
                 updateTabMessages(activeTabId, (prev) => [
                   ...prev,
@@ -430,6 +446,13 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               </div>
             ))}
             
+            {/* Todo Panel */}
+            {activeTab.todos?.length > 0 && (
+              <div className="mt-4">
+                <TodoPanel todos={activeTab.todos} />
+              </div>
+            )}
+
             {isLoading && (
               <div className="flex gap-4 pt-4 border-t border-slate-100 mt-4">
                  <div className="flex-shrink-0 w-6 h-6 rounded bg-slate-100 flex items-center justify-center mt-0.5">

@@ -92,14 +92,21 @@ export type CLIOutputMessage =
 // フロントエンド向けの正規化されたメッセージ型
 // ============================================================
 
+export interface TodoItem {
+  content: string
+  status: "pending" | "in_progress" | "completed"
+  activeForm: string
+}
+
 export interface NormalizedMessage {
-  type: "text" | "tool_use" | "tool_result" | "error" | "done" | "session"
+  type: "text" | "tool_use" | "tool_result" | "error" | "done" | "session" | "todo_update"
   content?: string
   sessionId?: string
   toolName?: string
   toolInput?: unknown
   toolResult?: unknown
   error?: string
+  todos?: TodoItem[]
 }
 
 // ============================================================
@@ -237,6 +244,15 @@ export function spawnClaudeCode(options: ClaudeCodeOptions): ChildProcess {
           }
 
           case "tool_use": {
+            // TodoWrite ツールの場合は todo_update として発行
+            if (msg.tool_name === "TodoWrite") {
+              const raw = msg as Record<string, unknown>
+              const todos = raw.todos as TodoItem[] | undefined
+              if (todos && Array.isArray(todos)) {
+                onMessage({ type: "todo_update", todos })
+                break
+              }
+            }
             onMessage({
               type: "tool_use",
               toolName: msg.tool_name,
