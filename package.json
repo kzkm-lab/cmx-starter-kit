@@ -12,7 +12,8 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "studio": "npm --prefix .cmx/studio run dev"
+    "studio": "next dev --turbopack --port 4000 & npm --prefix .cmx/studio run dev",
+    "studio:only": "npm --prefix .cmx/studio run dev"
   },
   "dependencies": {
     "@mdx-js/mdx": "^3.1.0",
