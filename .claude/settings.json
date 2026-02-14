@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.cmx/**)",
+      "Write(.cmx/**)",
+      "Edit(.cmx/**)"
+    ]
+  }
+}

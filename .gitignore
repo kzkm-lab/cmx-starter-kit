@@ -41,3 +41,13 @@ next-env.d.ts
 # cloudflare
 .wrangler/
 .dev.vars
+
+# cmx studio
+.cmx/studio/node_modules/
+.cmx/studio/.next/
+.cmx/studio/.env
+
+# lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
