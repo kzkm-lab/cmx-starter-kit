@@ -91,11 +91,23 @@ export function DeployPanel({ onSendMessage, isLoading }: DeployPanelProps) {
   const targetEnv = environments.find((e) => e.branch === targetBranch)
   const targetExists = targetEnv?.exists ?? false
 
-  // 「開発ブランチを作成」ハンドラ
-  const handleCreateDevelop = () => {
-    onSendMessage(
-      `${targetBranch} ブランチを現在のブランチ (${currentBranch}) から作成してください。git branch ${targetBranch} を実行してください。`
-    )
+  // 「開発ブランチを作成」ハンドラ（API 直接呼び出し）
+  const handleCreateDevelop = async () => {
+    try {
+      const response = await fetch("/api/setup/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create-branch", branchName: targetBranch }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        await fetchStatus() // パネルを即時更新
+      } else {
+        console.error("Failed to create branch:", data.error)
+      }
+    } catch (error) {
+      console.error("Failed to create branch:", error)
+    }
   }
 
   // 「開発に送る」ボタンのハンドラ

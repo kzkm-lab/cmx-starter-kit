@@ -147,6 +147,37 @@ export function getGitStatus(): GitStatus {
   }
 }
 
+// ============================================================
+// Git アクション
+// ============================================================
+
+/**
+ * ブランチを作成（現在のブランチから分岐）
+ */
+export function createBranch(branchName: string): { success: boolean; error?: string } {
+  const siteDir = getSiteDirPath()
+
+  // 既に存在するか確認
+  const exists = !!git(`rev-parse --verify ${branchName}`, siteDir)
+  if (exists) {
+    return { success: true } // 既に存在するなら成功扱い
+  }
+
+  try {
+    execSync(`git branch ${branchName}`, {
+      cwd: siteDir,
+      encoding: "utf-8",
+      timeout: 10000,
+    })
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "ブランチの作成に失敗しました",
+    }
+  }
+}
+
 /**
  * git diff の概要を取得（変更ファイルの統計情報）
  */

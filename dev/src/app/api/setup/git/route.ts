@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { getGitStatus, getGitDiffSummary } from "@/lib/setup/git-service"
+import { getGitStatus, getGitDiffSummary, createBranch } from "@/lib/setup/git-service"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -26,12 +26,23 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { action } = await request.json()
+    const body = await request.json()
+    const { action, branchName } = body
 
     switch (action) {
       case "diff": {
         const diff = getGitDiffSummary()
         return Response.json({ diff })
+      }
+      case "create-branch": {
+        if (!branchName || typeof branchName !== "string") {
+          return Response.json({ error: "branchName is required" }, { status: 400 })
+        }
+        const result = createBranch(branchName)
+        if (!result.success) {
+          return Response.json({ error: result.error }, { status: 500 })
+        }
+        return Response.json({ success: true })
       }
       default:
         return Response.json({ error: "Unknown action" }, { status: 400 })
