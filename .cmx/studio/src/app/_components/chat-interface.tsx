@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "./settings-dialog"
 import { CommandMenu, type CommandMetadata } from "./command-menu"
-import { AlertCircle, SendHorizontal, Terminal, Loader2, GitBranch, Plus, MessageSquare } from "lucide-react"
+import { AlertCircle, SendHorizontal, Terminal, Loader2, GitBranch, Plus, MessageSquare, Archive, RotateCcw } from "lucide-react"
 import { TodoPanel } from "./todo-panel"
 import { DeployPanel } from "./deploy-panel"
 import type { TodoItem } from "@/lib/setup/claude-code-cli"
@@ -30,6 +30,7 @@ interface Chat {
   messages: Message[]
   sessionId: string | null
   todos: TodoItem[]
+  archived?: boolean
 }
 
 /** タスク（作業単位 = ブランチ） */
@@ -46,20 +47,21 @@ interface Task {
 // ヘルパー
 // ============================================================
 
-function createChat(index: number): Chat {
-  const id = Date.now().toString()
+function createChat(taskId: string, index: number): Chat {
+  const id = `${taskId}-chat-${index}`
   return {
     id,
     title: `Chat ${index}`,
     messages: [],
     sessionId: null,
     todos: [],
+    archived: false,
   }
 }
 
 function createTask(index: number): Task {
   const id = Date.now().toString()
-  const chat = createChat(1)
+  const chat = createChat(id, 1)
   return {
     id,
     title: `Task ${index}`,
@@ -81,15 +83,13 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterfaceProps) {
   // タスク・チャット状態
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    const task = createTask(1)
-    return [task]
-  })
-  const [activeTaskId, setActiveTaskId] = useState(() => tasks[0].id)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [activeTaskId, setActiveTaskId] = useState("")
 
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
 
   // 環境変数の状態
   const [envConfigured, setEnvConfigured] = useState<boolean | null>(null)
@@ -101,6 +101,13 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
 
   // セッション復元済みフラグ
   const [sessionsLoaded, setSessionsLoaded] = useState(false)
+
+  // タスク名編集状態
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editingTaskTitle, setEditingTaskTitle] = useState("")
+
+  // アーカイブドロップダウン表示状態
+  const [showArchivedDropdown, setShowArchivedDropdown] = useState(false)
 
   // アクティブなタスク・チャットを取得（データ不整合時のフォールバック付き）
   const activeTask = tasks.find((t) => t.id === activeTaskId) ?? tasks[0]
@@ -220,6 +227,21 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     checkBranch()
   }, [envConfigured, settingsOpen])
 
+  // アーカイブドロップダウンの外側クリックで閉じる
+  useEffect(() => {
+    if (!showArchivedDropdown) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('[data-archived-dropdown]')) {
+        setShowArchivedDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showArchivedDropdown])
+
   // 開発ブランチを作成
   const handleCreateBranch = async () => {
     setIsCreatingBranch(true)
@@ -301,7 +323,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       const data = await response.json()
       if (data.success) {
         // 切替元を paused に
-        if (activeTask.status === "working") {
+        if (activeTask?.status === "working") {
           updateTask(activeTaskId, (t) => ({ ...t, status: "paused" as const }))
         }
         setActiveTaskId(newTaskId)
@@ -313,16 +335,89 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     }
   }
 
-  /** 新しいタスクを追加 */
-  const addNewTask = () => {
-    const newTask = createTask(tasks.length + 1)
-    setTasks((prev) => [...prev, newTask])
-    handleTaskSwitch(newTask.id)
+  /** 新しいタスクを追加（develop からブランチを即時作成） */
+  const addNewTask = async () => {
+    if (isCreatingTask || !branchReady) return
+    setIsCreatingTask(true)
+
+    try {
+      const newTask = createTask(tasks.length + 1)
+
+      if (tasks.length > 0 && activeTaskId) {
+        // 既存タスクあり → switch-task（checkpoint + 新ブランチ作成）
+        const response = await fetch("/api/setup/git", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "switch-task",
+            fromTaskId: activeTaskId,
+            toTaskId: newTask.id,
+            toBranch: newTask.branchName,
+          }),
+        })
+        const data = await response.json()
+        if (!data.success) {
+          console.error("Failed to create task:", data.error)
+          return
+        }
+        if (activeTask?.status === "working") {
+          updateTask(activeTaskId, (t) => ({ ...t, status: "paused" as const }))
+        }
+      } else {
+        // 最初のタスク → develop から直接ブランチ作成
+        const response = await fetch("/api/setup/git", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "create-branch", branchName: newTask.branchName }),
+        })
+        const data = await response.json()
+        if (!data.success) {
+          console.error("Failed to create branch:", data.error)
+          return
+        }
+      }
+
+      setTasks((prev) => [...prev, newTask])
+      setActiveTaskId(newTask.id)
+    } catch (error) {
+      console.error("Failed to create task:", error)
+    } finally {
+      setIsCreatingTask(false)
+    }
+  }
+
+  /** タスク名の編集を開始 */
+  const startEditingTaskTitle = (taskId: string, currentTitle: string) => {
+    setEditingTaskId(taskId)
+    setEditingTaskTitle(currentTitle)
+  }
+
+  /** タスク名の編集を保存 */
+  const saveTaskTitle = () => {
+    if (!editingTaskId || !editingTaskTitle.trim()) {
+      setEditingTaskId(null)
+      setEditingTaskTitle("")
+      return
+    }
+
+    updateTask(editingTaskId, (task) => ({
+      ...task,
+      title: editingTaskTitle.trim(),
+    }))
+
+    setEditingTaskId(null)
+    setEditingTaskTitle("")
+  }
+
+  /** タスク名の編集をキャンセル */
+  const cancelEditingTaskTitle = () => {
+    setEditingTaskId(null)
+    setEditingTaskTitle("")
   }
 
   /** タスク反映（直接マージモード） */
   const handleApplyTask = async () => {
-    if (!activeTask.branchName) return
+    if (!activeTask?.branchName) return
 
     try {
       const response = await fetch("/api/setup/git", {
@@ -348,7 +443,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
 
   /** タスクブランチをプッシュ（PR モード） */
   const handlePushTask = async () => {
-    if (!activeTask.branchName) return
+    if (!activeTask?.branchName) return
 
     try {
       const response = await fetch("/api/setup/git", {
@@ -387,7 +482,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   /** 新しいチャットを追加（タスク内） */
   const addNewChat = () => {
     if (!activeTask) return
-    const newChat = createChat(activeTask.chats.length + 1)
+    const newChat = createChat(activeTaskId, activeTask.chats.length + 1)
     updateTask(activeTaskId, (task) => ({
       ...task,
       chats: [...task.chats, newChat],
@@ -395,18 +490,27 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     }))
   }
 
-  /** チャットタブを閉じる */
-  const closeChat = (chatId: string) => {
-    if (!activeTask || activeTask.chats.length === 1) return
+  /** チャットをアーカイブする */
+  const archiveChat = (chatId: string) => {
+    if (!activeTask) return
 
-    updateTask(activeTaskId, (task) => {
-      const filtered = task.chats.filter((c) => c.id !== chatId)
-      const newActiveChatId =
-        task.activeChatId === chatId
-          ? filtered[Math.max(0, task.chats.findIndex((c) => c.id === chatId) - 1)].id
-          : task.activeChatId
-      return { ...task, chats: filtered, activeChatId: newActiveChatId }
-    })
+    // チャットをアーカイブ
+    updateChat(chatId, (chat) => ({ ...chat, archived: true }))
+
+    // アーカイブ対象がアクティブチャットの場合、別の非アーカイブチャットに切り替え
+    const activeChats = activeTask.chats.filter((c) => !c.archived && c.id !== chatId)
+    if (activeChats.length > 0 && activeTask.activeChatId === chatId) {
+      updateTask(activeTaskId, (task) => ({
+        ...task,
+        activeChatId: activeChats[0].id,
+      }))
+    }
+  }
+
+  /** アーカイブされたチャットを復元する */
+  const restoreChat = (chatId: string) => {
+    if (!activeTask) return
+    updateChat(chatId, (chat) => ({ ...chat, archived: false }))
   }
 
   // ============================================================
@@ -438,6 +542,13 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
 
     const userMessage: Message = { role: "user", content: message }
     updateMessages((prev) => [...prev, userMessage])
+
+    // Auto-set chat title from first message
+    if (activeChat.messages.length === 0) {
+      const title = message.slice(0, 40) + (message.length > 40 ? "..." : "")
+      updateChat(activeChat.id, (chat) => ({ ...chat, title }))
+    }
+
     setIsLoading(true)
 
     // タスクステータスを working に
@@ -583,32 +694,61 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   return (
     <div className="flex flex-col h-full">
 
-      {/* タスクバー（タスク切り替え + ステータス） */}
-      <div className="border-b border-slate-200 bg-slate-50/50 px-2 flex items-center gap-1 overflow-x-auto scrollbar-hide">
-        {tasks.map((task) => (
+      {/* タスクバー（タスク切り替え + ステータス）— develop ブランチ準備完了時のみ表示 */}
+      {isAuthenticated && envConfigured && branchReady && (
+        <div className="border-b border-slate-200 bg-slate-50/50 px-2 flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          {tasks.map((task) => (
+            <div
+              key={task.id}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                activeTaskId === task.id
+                  ? "bg-white text-slate-900 border-b-2 border-slate-900"
+                  : "text-slate-500"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass(task.status)}`} />
+              {editingTaskId === task.id ? (
+                <input
+                  type="text"
+                  value={editingTaskTitle}
+                  onChange={(e) => setEditingTaskTitle(e.target.value)}
+                  onBlur={saveTaskTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      saveTaskTitle()
+                    } else if (e.key === "Escape") {
+                      cancelEditingTaskTitle()
+                    }
+                  }}
+                  autoFocus
+                  className="bg-white border border-slate-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400 min-w-[80px]"
+                />
+              ) : (
+                <span
+                  className="cursor-pointer hover:text-slate-900"
+                  onClick={() => handleTaskSwitch(task.id)}
+                  onDoubleClick={() => startEditingTaskTitle(task.id, task.title)}
+                  title="ダブルクリックで編集"
+                >
+                  {task.title}
+                </span>
+              )}
+            </div>
+          ))}
           <button
-            key={task.id}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${
-              activeTaskId === task.id
-                ? "bg-white text-slate-900 border-b-2 border-slate-900"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-            onClick={() => handleTaskSwitch(task.id)}
-            disabled={isLoading && activeTaskId !== task.id}
+            onClick={addNewTask}
+            className="flex-shrink-0 px-2 py-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+            title="新しいタスクを開く"
+            disabled={isLoading || isCreatingTask}
           >
-            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass(task.status)}`} />
-            <span>{task.title}</span>
+            {isCreatingTask ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Plus className="w-3.5 h-3.5" />
+            )}
           </button>
-        ))}
-        <button
-          onClick={addNewTask}
-          className="flex-shrink-0 px-2 py-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
-          title="新しいタスクを開く"
-          disabled={isLoading}
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* タスクヘッダー: ブランチ状態 + アクションボタン（環境準備完了時のみ） */}
       {isAuthenticated && envConfigured && branchReady && activeTask && (
@@ -628,7 +768,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       {isAuthenticated && envConfigured && branchReady && activeTask && (
         <div className="border-b border-slate-100 bg-white px-2 flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
           <MessageSquare className="w-3 h-3 text-slate-300 mx-1 flex-shrink-0" />
-          {activeTask.chats.map((chat) => (
+          {activeTask.chats.filter((c) => !c.archived).map((chat) => (
             <div
               key={chat.id}
               className={`group flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium transition-colors cursor-pointer ${
@@ -639,11 +779,11 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               onClick={() => handleChatSwitch(chat.id)}
             >
               <span className="whitespace-nowrap">{chat.title}</span>
-              {activeTask.chats.length > 1 && (
+              {activeTask.chats.filter((c) => !c.archived).length > 1 && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    closeChat(chat.id)
+                    archiveChat(chat.id)
                   }}
                   className="opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded p-0.5 transition-opacity"
                 >
@@ -661,6 +801,45 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
           >
             <Plus className="w-3 h-3" />
           </button>
+          {activeTask.chats.filter((c) => c.archived).length > 0 && (
+            <div className="relative" data-archived-dropdown>
+              <button
+                onClick={() => setShowArchivedDropdown(!showArchivedDropdown)}
+                className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 text-[11px] text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                title="アーカイブされたチャット"
+              >
+                <Archive className="w-3 h-3" />
+                <span>{activeTask.chats.filter((c) => c.archived).length}</span>
+              </button>
+              {showArchivedDropdown && (
+                <div className="absolute top-full right-0 mt-1 bg-white border border-slate-200 rounded shadow-lg z-10 min-w-[200px]">
+                  <div className="p-2 border-b border-slate-100">
+                    <div className="text-[11px] font-medium text-slate-600">アーカイブ済み</div>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {activeTask.chats.filter((c) => c.archived).map((chat) => (
+                      <div
+                        key={chat.id}
+                        className="group flex items-center justify-between px-3 py-2 hover:bg-slate-50 text-[11px]"
+                      >
+                        <span className="text-slate-600 truncate flex-1">{chat.title}</span>
+                        <button
+                          onClick={() => {
+                            restoreChat(chat.id)
+                            setShowArchivedDropdown(false)
+                          }}
+                          className="ml-2 p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="復元"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -710,6 +889,32 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   <GitBranch className="w-3.5 h-3.5" />
                 )}
                 {isCreatingBranch ? "作成中..." : "開発ブランチを作成"}
+              </Button>
+            </div>
+          </div>
+        ) : tasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-4">
+            <div className="p-4 bg-slate-100 rounded-lg max-w-md w-full space-y-3">
+              <div className="flex items-center gap-2">
+                <Plus className="h-5 w-5 text-slate-600" />
+                <p className="font-semibold text-slate-900">タスクを作成してください</p>
+              </div>
+              <p className="text-sm text-slate-600">
+                開発ブランチ（<code className="bg-slate-200 px-1 rounded text-xs">{targetBranchName}</code>）の準備ができました。
+                タスクを作成すると、開発ブランチから派生ブランチが作成され、作業を開始できます。
+              </p>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={addNewTask}
+                disabled={isCreatingTask}
+              >
+                {isCreatingTask ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                {isCreatingTask ? "作成中..." : "最初のタスクを作成"}
               </Button>
             </div>
           </div>
@@ -766,22 +971,24 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       {/* 入力エリア */}
       <div className="p-4 bg-white border-t border-slate-200">
         <div className="max-w-3xl mx-auto">
-          <div className="mb-2">
-            <CommandMenu onCommandSelect={handleCommandSelect} />
-          </div>
+          {tasks.length > 0 && (
+            <div className="mb-2">
+              <CommandMenu onCommandSelect={handleCommandSelect} />
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="relative">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={!isAuthenticated || !envConfigured || !branchReady ? "System unavailable" : "Type instructions..."}
+              placeholder={!isAuthenticated || !envConfigured || !branchReady || tasks.length === 0 ? "System unavailable" : "Type instructions..."}
               className="w-full min-h-[56px] pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 focus:bg-white transition-all resize-none text-sm text-slate-800 placeholder:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading || !isAuthenticated || !envConfigured || !branchReady}
+              disabled={isLoading || !isAuthenticated || !envConfigured || !branchReady || tasks.length === 0}
               rows={1}
             />
             <Button
               type="submit"
-              disabled={isLoading || !input.trim() || !isAuthenticated || !envConfigured || !branchReady}
+              disabled={isLoading || !input.trim() || !isAuthenticated || !envConfigured || !branchReady || tasks.length === 0}
               variant="ghost"
               size="icon"
               className="absolute right-2 top-2 h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"

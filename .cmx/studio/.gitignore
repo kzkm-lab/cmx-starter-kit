@@ -22,6 +22,9 @@ node_modules/
 .DS_Store
 *.pem
 
+# sessions
+sessions/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
