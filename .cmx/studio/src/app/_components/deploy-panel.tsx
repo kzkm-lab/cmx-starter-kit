@@ -16,6 +16,7 @@ import {
   Eye,
   Circle,
   Check,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { GitStatus } from "@/lib/setup/git-service"
@@ -329,14 +330,21 @@ export function DeployPanel({
                 size="sm"
                 className="h-7 text-[11px] gap-1"
                 onClick={() => {
-                  onSendMessage(
-                    `${targetBranch} ブランチにチェックアウトしてください。`
-                  )
+                  onSwitchToDevelop?.()
                 }}
-                disabled={isLoading}
+                disabled={isLoading || isSwitchingToDevelop}
               >
-                <GitBranch className="w-3 h-3" />
-                {targetBranch} に切り替え
+                {isSwitchingToDevelop ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    切り替え中...
+                  </>
+                ) : (
+                  <>
+                    <GitBranch className="w-3 h-3" />
+                    {targetBranch} に切り替え
+                  </>
+                )}
               </Button>
             </div>
           )}

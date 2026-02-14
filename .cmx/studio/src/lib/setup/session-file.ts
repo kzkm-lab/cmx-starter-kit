@@ -128,8 +128,29 @@ export async function loadTasks(): Promise<Task[] | null> {
       try {
         const filePath = path.join(dir, file)
         const data = await fs.readFile(filePath, "utf-8")
-        const task = JSON.parse(data) as Task
-        tasks.push(task)
+        const rawTask = JSON.parse(data) as Task
+
+        // 旧データとの互換性のため正規化処理を実行
+        const normalizedChats = (rawTask.chats ?? []).map((c) => ({
+          ...c,
+          archived: !!c.archived,
+        }))
+
+        // activeChatId がアーカイブされているか存在しない場合は補正
+        const activeChatId =
+          normalizedChats.find((c) => c.id === rawTask.activeChatId && !c.archived)?.id ??
+          normalizedChats.find((c) => !c.archived)?.id ??
+          normalizedChats[0]?.id ??
+          ""
+
+        const normalizedTask: Task = {
+          ...rawTask,
+          archived: !!rawTask.archived,
+          chats: normalizedChats,
+          activeChatId,
+        }
+
+        tasks.push(normalizedTask)
       } catch (error) {
         console.error(`Failed to load task from ${file}:`, error)
       }

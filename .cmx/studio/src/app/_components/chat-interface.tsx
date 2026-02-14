@@ -245,7 +245,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     checkBranch()
   }, [envConfigured, settingsOpen])
 
-  // アーカイブドロップダウンの外側クリックで閉じる
+  // アーカイブドロップダウンの外側クリックで閉じる（チャット用）
   useEffect(() => {
     if (!showArchivedDropdown) return
 
@@ -259,6 +259,21 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showArchivedDropdown])
+
+  // アーカイブドロップダウンの外側クリックで閉じる（タスク用）
+  useEffect(() => {
+    if (!showArchivedTasksDropdown) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('[data-archived-tasks-dropdown]')) {
+        setShowArchivedTasksDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showArchivedTasksDropdown])
 
   // 開発ブランチを作成
   const handleCreateBranch = async () => {
@@ -576,7 +591,11 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
 
     // 確認ダイアログを表示
     const confirmed = window.confirm(
-      "このタスクを終了しますか？\n\n変更は develop ブランチに反映され、タスクはアーカイブされます。\n後で復活することもできます。"
+      "このタスクを完了します。\n\n" +
+      "・変更を develop に反映します\n" +
+      "・タスクは「アーカイブ済みタスク」に移動します\n" +
+      "・あとで「復元」で再開できます\n\n" +
+      "続行しますか？"
     )
     if (!confirmed) return
 
