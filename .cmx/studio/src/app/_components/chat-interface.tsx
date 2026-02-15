@@ -25,6 +25,7 @@ interface Message {
   content: string
   toolName?: string
   toolStatus?: ToolStatus
+  toolUseId?: string
   thinking?: boolean
 }
 
@@ -39,6 +40,8 @@ interface Chat {
   sessionId: string | null
   todos: TodoItem[]
   archived?: boolean
+  isLoading?: boolean
+  inputDraft?: string
 }
 
 /** タスク（作業単位 = ブランチ） */
@@ -96,8 +99,6 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   const [tasks, setTasks] = useState<Task[]>([])
   const [activeTaskId, setActiveTaskId] = useState("")
 
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isCreatingTask, setIsCreatingTask] = useState(false)
 
@@ -132,6 +133,8 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       null
     : null
   const messages = activeChat?.messages ?? EMPTY_MESSAGES
+  const isLoading = activeChat?.isLoading ?? false
+  const input = activeChat?.inputDraft ?? ""
 
   // スクロールコンテナへの参照
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -151,10 +154,27 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         const data = await response.json()
 
         if (data.tasks && Array.isArray(data.tasks) && data.tasks.length > 0) {
-          // chats 配列を持つ有効なタスクのみ復元し、archived プロパティを正規化
+          // chats 配列を持つ有効なタスクのみ復元し、一時状態をサニタイズ
           const validTasks = (data.tasks as Task[])
             .filter((t) => t.id && Array.isArray(t.chats) && t.chats.length > 0)
-            .map((t) => ({ ...t, archived: !!t.archived }))
+            .map((t) => {
+              const chats = t.chats.map((c) => ({
+                ...c,
+                archived: !!c.archived,
+                isLoading: false,   // 一時状態をリセット
+                inputDraft: "",     // 一時状態をリセット
+              }))
+              const firstActiveChat = chats.find((c) => !c.archived)?.id ?? chats[0]?.id ?? ""
+              return {
+                ...t,
+                archived: !!t.archived,
+                chats,
+                // activeChatId が有効な非アーカイブチャットを指しているか確認
+                activeChatId: chats.some((c) => c.id === t.activeChatId && !c.archived)
+                  ? t.activeChatId
+                  : firstActiveChat,
+              }
+            })
 
           if (validTasks.length > 0) {
             setTasks(validTasks)
@@ -179,10 +199,15 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
 
     const saveSessions = async () => {
       try {
+        // isLoading, inputDraft は一時的な状態なので永続化から除外
+        const tasksToSave = tasks.map((t) => ({
+          ...t,
+          chats: t.chats.map(({ isLoading: _, inputDraft: __, ...chat }) => chat),
+        }))
         await fetch("/api/setup/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tasks }),
+          body: JSON.stringify({ tasks: tasksToSave }),
         })
       } catch (error) {
         console.error("Failed to save sessions:", error)
@@ -435,12 +460,17 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
     setTasks((prev) => prev.map((t) => (t.id === taskId ? updater(t) : t)))
   }
 
-  /** アクティブタスク内のチャットを更新 */
-  const updateChat = (chatId: string, updater: (chat: Chat) => Chat) => {
-    updateTask(activeTaskId, (task) => ({
+  /** 指定タスク内のチャットを ID 明示で更新（非同期処理での安全な更新用） */
+  const updateChatById = (taskId: string, chatId: string, updater: (chat: Chat) => Chat) => {
+    updateTask(taskId, (task) => ({
       ...task,
       chats: task.chats.map((c) => (c.id === chatId ? updater(c) : c)),
     }))
+  }
+
+  /** アクティブタスク内のチャットを更新 */
+  const updateChat = (chatId: string, updater: (chat: Chat) => Chat) => {
+    updateChatById(activeTaskId, chatId, updater)
   }
 
   /** アクティブチャットのメッセージを更新 */
@@ -459,6 +489,18 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   const updateTodos = (todos: TodoItem[]) => {
     if (!activeChat) return
     updateChat(activeChat.id, (chat) => ({ ...chat, todos }))
+  }
+
+  /** アクティブチャットのローディング状態を更新 */
+  const setIsLoading = (loading: boolean) => {
+    if (!activeChat) return
+    updateChat(activeChat.id, (chat) => ({ ...chat, isLoading: loading }))
+  }
+
+  /** アクティブチャットの入力テキストを更新 */
+  const setInput = (value: string) => {
+    if (!activeChat) return
+    updateChat(activeChat.id, (chat) => ({ ...chat, inputDraft: value }))
   }
 
   // ============================================================
@@ -791,20 +833,31 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   const sendMessage = async (message: string) => {
     if (!message.trim() || isLoading || !isAuthenticated || !activeTask || !activeChat) return
 
+    // 送信開始時の taskId/chatId をキャプチャ（非同期処理中のチャット切り替えに安全）
+    const targetTaskId = activeTask.id
+    const targetChatId = activeChat.id
+    const resumeSessionId = activeChat.sessionId
+
+    // スコープ固定のヘルパー関数
+    const scopedUpdateChat = (updater: (chat: Chat) => Chat) =>
+      updateChatById(targetTaskId, targetChatId, updater)
+    const scopedUpdateMessages = (updater: (messages: Message[]) => Message[]) =>
+      scopedUpdateChat((chat) => ({ ...chat, messages: updater(chat.messages) }))
+
     const userMessage: Message = { role: "user", content: message }
-    updateMessages((prev) => [...prev, userMessage])
+    scopedUpdateMessages((prev) => [...prev, userMessage])
 
     // Auto-set chat title from first message
     if (activeChat.messages.length === 0) {
       const title = message.slice(0, 40) + (message.length > 40 ? "..." : "")
-      updateChat(activeChat.id, (chat) => ({ ...chat, title }))
+      scopedUpdateChat((chat) => ({ ...chat, title }))
     }
 
-    setIsLoading(true)
+    scopedUpdateChat((chat) => ({ ...chat, isLoading: true }))
 
     // タスクステータスを working に
     if (activeTask.status === "idle" || activeTask.status === "paused") {
-      updateTask(activeTaskId, (t) => ({ ...t, status: "working" as const }))
+      updateTask(targetTaskId, (t) => ({ ...t, status: "working" as const }))
     }
 
     try {
@@ -813,7 +866,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          sessionId: activeChat?.sessionId ?? null,
+          sessionId: resumeSessionId ?? null,
         }),
       })
 
@@ -825,9 +878,10 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       let sseBuffer = ""
+      let shouldStop = false
 
       if (reader) {
-        while (true) {
+        while (!shouldStop) {
           const { done, value } = await reader.read()
           if (done) break
 
@@ -842,14 +896,35 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               const data = JSON.parse(line.slice(6))
 
               if (data.type === "session" && data.sessionId) {
-                updateSessionId(data.sessionId)
-              } else if (data.type === "text") {
-                updateMessages((prev) => {
+                scopedUpdateChat((chat) => ({ ...chat, sessionId: data.sessionId }))
+              } else if (data.type === "thinking") {
+                // thinking メッセージ: 独立したメッセージとして追加/更新
+                scopedUpdateMessages((prev) => {
                   const newMessages = [...prev]
                   const lastMessage = newMessages[newMessages.length - 1]
 
-                  // 既存のアシスタントメッセージがある場合
-                  if (lastMessage?.role === "assistant") {
+                  if (lastMessage?.role === "assistant" && lastMessage.thinking) {
+                    // 既存の thinking メッセージを更新（内容が異なれば上書き）
+                    if (data.content && data.content !== lastMessage.content) {
+                      lastMessage.content = data.content
+                    }
+                  } else {
+                    // 新しい thinking メッセージを追加
+                    newMessages.push({
+                      role: "assistant",
+                      content: data.content || "",
+                      thinking: true,
+                    })
+                  }
+                  return newMessages
+                })
+              } else if (data.type === "text") {
+                scopedUpdateMessages((prev) => {
+                  const newMessages = [...prev]
+                  const lastMessage = newMessages[newMessages.length - 1]
+
+                  // 既存の非 thinking アシスタントメッセージがある場合
+                  if (lastMessage?.role === "assistant" && !lastMessage.thinking) {
                     // 新しいテキストが前回より長い場合のみ更新（ストリーミング）
                     if (data.content && data.content.length > lastMessage.content.length) {
                       lastMessage.content = data.content
@@ -858,7 +933,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                       lastMessage.content = data.content
                     }
                   } else {
-                    // 新しいアシスタントメッセージを追加
+                    // 新しいアシスタントメッセージを追加（thinking の後でも新規追加）
                     newMessages.push({
                       role: "assistant",
                       content: data.content || "",
@@ -867,35 +942,39 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   return newMessages
                 })
               } else if (data.type === "tool_use") {
-                updateMessages((prev) => [
+                scopedUpdateMessages((prev) => [
                   ...prev,
                   {
                     role: "tool" as const,
                     content: data.toolInput ? JSON.stringify(data.toolInput, null, 2) : "",
                     toolName: data.toolName,
                     toolStatus: "pending" as const,
+                    toolUseId: data.toolUseId,
                   },
                 ])
               } else if (data.type === "tool_result") {
-                updateMessages((prev) => {
+                scopedUpdateMessages((prev) => {
                   const newMessages = [...prev]
-                  const lastTool = newMessages.findLast((m) => m.role === "tool" && m.toolStatus === "pending")
-                  if (lastTool) {
-                    lastTool.toolStatus = "completed"
+                  // toolUseId で対応づけ（なければ最後の pending を使用）
+                  const targetTool = data.toolUseId
+                    ? newMessages.find((m) => m.role === "tool" && m.toolUseId === data.toolUseId)
+                    : newMessages.findLast((m) => m.role === "tool" && m.toolStatus === "pending")
+                  if (targetTool) {
+                    targetTool.toolStatus = "completed"
                     // ツールの結果がある場合は content を更新
                     if (data.toolResult) {
                       const resultStr = typeof data.toolResult === "string"
                         ? data.toolResult
                         : JSON.stringify(data.toolResult, null, 2)
-                      lastTool.content = resultStr
+                      targetTool.content = resultStr
                     }
                   }
                   return newMessages
                 })
               } else if (data.type === "todo_update" && data.todos) {
-                updateTodos(data.todos)
+                scopedUpdateChat((chat) => ({ ...chat, todos: data.todos }))
               } else if (data.type === "error") {
-                updateMessages((prev) => [
+                scopedUpdateMessages((prev) => [
                   ...prev,
                   {
                     role: "system" as const,
@@ -903,6 +982,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                   },
                 ])
               } else if (data.type === "done") {
+                shouldStop = true
                 break
               }
             } catch {
@@ -913,13 +993,15 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       }
     } catch (error) {
       console.error("Chat error:", error)
-      const errorMessage: Message = {
-        role: "system",
-        content: "エラーが発生しました。もう一度お試しください。",
-      }
-      updateMessages((prev) => [...prev, errorMessage])
+      scopedUpdateMessages((prev) => [
+        ...prev,
+        {
+          role: "system" as const,
+          content: "エラーが発生しました。もう一度お試しください。",
+        },
+      ])
     } finally {
-      setIsLoading(false)
+      scopedUpdateChat((chat) => ({ ...chat, isLoading: false }))
     }
   }
 
@@ -1001,10 +1083,10 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
                 />
               ) : (
                 <span
-                  className="cursor-pointer hover:text-foreground"
+                  className="cursor-pointer hover:text-foreground w-[120px] truncate"
                   onClick={() => handleTaskSwitch(task.id)}
                   onDoubleClick={() => startEditingTaskTitle(task.id, task.title)}
-                  title="ダブルクリックで編集"
+                  title={task.title}
                 >
                   {task.title}
                 </span>
@@ -1103,7 +1185,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                 activeTask.activeChatId === chat.id ? "bg-green-500" : "bg-muted"
               }`} />
-              <span className="whitespace-nowrap">{chat.title}</span>
+              <span className="w-[120px] truncate" title={chat.title}>{chat.title}</span>
               {activeTask.chats.filter((c) => !c.archived).length > 1 && (
                 <button
                   onClick={(e) => {
@@ -1277,6 +1359,46 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
           </div>
         ) : (
           <div className="space-y-1 max-w-3xl mx-auto pb-[20vh]">
+            {/* ステータス行 - 処理中の最新アクティビティを表示 */}
+            {isLoading && (() => {
+              let statusText = "処理中..."
+
+              if (messages.length > 0) {
+                const lastMessage = messages[messages.length - 1]
+
+                // 最新のツールメッセージを探す（pending または completed）
+                const lastToolIndex = messages.findLastIndex((m) => m.role === "tool")
+                if (lastToolIndex !== -1) {
+                  const lastTool = messages[lastToolIndex]
+                  if (lastTool.toolStatus === "pending") {
+                    statusText = `実行中: ${lastTool.toolName}`
+                  } else if (lastTool.toolStatus === "completed" && lastToolIndex === messages.length - 1) {
+                    // 最後のメッセージがツール完了の場合、次の処理を待機中
+                    statusText = "処理中..."
+                  }
+                }
+
+                // thinking メッセージの場合
+                if (lastMessage.thinking) {
+                  statusText = "思考中..."
+                }
+
+                // アシスタントテキストメッセージの場合
+                if (lastMessage.role === "assistant" && !lastMessage.thinking) {
+                  statusText = "返答生成中..."
+                }
+              }
+
+              return (
+                <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border px-4 py-1.5">
+                  <div className="max-w-3xl mx-auto flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
+                    <span>{statusText}</span>
+                  </div>
+                </div>
+              )
+            })()}
+
             {messages.map((message, index) => (
               <MessageEntryComponent
                 key={index}
@@ -1285,14 +1407,12 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               />
             ))}
 
-            {/* AI考え中インジケーター */}
+            {/* AI処理中インジケーター */}
             {isLoading && (
               <div className="flex items-start gap-3 px-4 py-2">
-                {/* タイムライン */}
                 <div className="relative flex flex-col items-center pt-1">
                   <div className="w-2 h-2 rounded-full flex-shrink-0 bg-muted-foreground/40" />
                 </div>
-
                 <div className="flex-1 pb-1">
                   <LumaSpin />
                 </div>

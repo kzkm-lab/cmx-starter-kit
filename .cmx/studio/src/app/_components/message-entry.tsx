@@ -31,6 +31,7 @@ export interface MessageEntry {
   content: string
   toolName?: string
   toolStatus?: ToolStatus
+  toolUseId?: string
   thinking?: boolean
   isLast?: boolean
 }
@@ -141,6 +142,9 @@ export function MessageEntryComponent({ entry, index }: MessageEntryProps) {
       ? "bg-blue-400"
       : "bg-muted-foreground"
 
+    // ツール名に応じたアイコンを取得
+    const toolIcon = getEntryIcon(entry)
+
     return (
       <div className="flex gap-3 px-4 py-2">
         {/* タイムライン */}
@@ -153,12 +157,13 @@ export function MessageEntryComponent({ entry, index }: MessageEntryProps) {
           <button
             onClick={() => canExpand && setExpanded(!expanded)}
             className={cn(
-              "w-full flex items-center gap-2 text-left text-xs font-mono",
-              isError ? "text-red-400" : "text-muted-foreground",
+              "w-full flex items-center gap-2 text-left text-xs",
+              isError ? "text-red-400" : "text-foreground/70",
               canExpand && "hover:text-foreground cursor-pointer"
             )}
           >
-            <span className="truncate">{entry.toolName || "Tool"}</span>
+            <span className="flex-shrink-0">{toolIcon}</span>
+            <span className="font-medium truncate">{entry.toolName || "Tool"}</span>
             {canExpand && (
               <ChevronDown
                 className={cn(
@@ -224,24 +229,32 @@ export function MessageEntryComponent({ entry, index }: MessageEntryProps) {
   }
 
   // アシスタントメッセージの場合（タイムラインあり）
+  const dotColor = entry.thinking ? "bg-purple-400 dark:bg-purple-500" : "bg-muted-foreground/40"
+
   return (
     <div className="flex gap-3 px-4 py-2">
       {/* タイムライン */}
       <div className="relative flex flex-col items-center pt-1">
-        <div className="w-2 h-2 rounded-full flex-shrink-0 bg-muted-foreground/40" />
+        <div className={cn("w-2 h-2 rounded-full flex-shrink-0", dotColor)} />
         {!entry.isLast && <div className="w-px flex-1 bg-border mt-1" />}
       </div>
 
       <div className="flex-1 pb-1">
         {entry.thinking ? (
-          // Thinking メッセージ - 折りたたみ可能
-          <details className="group">
-            <summary className="cursor-pointer text-muted-foreground hover:text-foreground text-xs font-medium flex items-center gap-2">
-              <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180" />
-              <span>💭 思考中...</span>
+          // Thinking メッセージ - 紫色テーマの折りたたみカード
+          <details className="group rounded-md border border-purple-200 dark:border-purple-800 bg-purple-50/60 dark:bg-purple-900/15 overflow-hidden">
+            <summary className="cursor-pointer px-3 py-1.5 flex items-center gap-2 text-xs font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-100/50 dark:hover:bg-purple-800/20 transition-colors min-w-0">
+              <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180 flex-shrink-0" />
+              <Brain className="w-3 h-3 flex-shrink-0" />
+              <span className="flex-shrink-0">Thinking</span>
+              {entry.content && (
+                <span className="truncate text-purple-400 dark:text-purple-500 font-normal group-open:hidden">
+                  {entry.content.replace(/\n/g, " ").slice(0, 60)}
+                </span>
+              )}
             </summary>
-            <div className="mt-2 pl-4 border-l-2 border-border/30 text-muted-foreground text-xs">
-              <div className="whitespace-pre-wrap break-words opacity-60 italic">
+            <div className="px-3 py-2 border-t border-purple-200/50 dark:border-purple-800/50">
+              <div className="whitespace-pre-wrap break-words text-xs text-purple-600 dark:text-purple-400 italic leading-relaxed">
                 {entry.content}
               </div>
             </div>

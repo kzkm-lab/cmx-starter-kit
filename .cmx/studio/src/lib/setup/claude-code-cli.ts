@@ -99,12 +99,13 @@ export interface TodoItem {
 }
 
 export interface NormalizedMessage {
-  type: "text" | "tool_use" | "tool_result" | "error" | "done" | "session" | "todo_update"
+  type: "text" | "thinking" | "tool_use" | "tool_result" | "error" | "done" | "session" | "todo_update"
   content?: string
   sessionId?: string
   toolName?: string
   toolInput?: unknown
   toolResult?: unknown
+  toolUseId?: string
   error?: string
   todos?: TodoItem[]
 }
@@ -131,6 +132,14 @@ export function extractTextFromContent(content: ClaudeContentItem[]): string {
   return content
     .filter((item): item is ClaudeContentText => item.type === "text")
     .map((item) => item.text)
+    .join("")
+}
+
+/** assistant メッセージの content 配列から thinking テキストを抽出 */
+export function extractThinkingFromContent(content: ClaudeContentItem[]): string {
+  return content
+    .filter((item): item is ClaudeContentThinking => item.type === "thinking")
+    .map((item) => item.thinking)
     .join("")
 }
 
@@ -207,6 +216,109 @@ export function spawnClaudeCode(options: ClaudeCodeOptions): ChildProcess {
 
   // ── stdout パース ──
   let buffer = ""
+
+  /** 1行分の JSON をパースしてコールバックへディスパッチする */
+  const processLine = (line: string) => {
+    if (!line.trim()) return
+
+    let msg: CLIOutputMessage
+    try {
+      msg = JSON.parse(line) as CLIOutputMessage
+    } catch {
+      // JSON パース失敗は無視（npx のログなど）
+      return
+    }
+
+    // session_id を抽出（最初に見つかったもの）
+    if (!extractedSessionId) {
+      const sid = extractSessionId(msg)
+      if (sid) {
+        extractedSessionId = sid
+        onMessage({ type: "session", sessionId: sid })
+      }
+    }
+
+    // メッセージタイプごとの処理
+    switch (msg.type) {
+      case "assistant": {
+        // content 配列を順番に処理（thinking, tool_use, tool_result, text）
+        for (const item of msg.message.content) {
+          if (item.type === "thinking") {
+            onMessage({ type: "thinking", content: item.thinking })
+          } else if (item.type === "text") {
+            onMessage({ type: "text", content: item.text })
+          } else if (item.type === "tool_use") {
+            // TodoWrite の場合は todo_update として発行
+            if (item.name === "TodoWrite") {
+              const raw = item.input as Record<string, unknown>
+              const todos = raw.todos as TodoItem[] | undefined
+              if (todos && Array.isArray(todos)) {
+                onMessage({ type: "todo_update", todos })
+                continue
+              }
+            }
+            onMessage({
+              type: "tool_use",
+              toolName: item.name,
+              toolInput: item.input,
+              toolUseId: item.id,
+            })
+          } else if (item.type === "tool_result") {
+            onMessage({
+              type: "tool_result",
+              toolUseId: item.tool_use_id,
+              toolResult: item.content,
+            })
+          }
+        }
+        break
+      }
+
+      case "tool_use": {
+        // TodoWrite ツールの場合は todo_update として発行
+        if (msg.tool_name === "TodoWrite") {
+          const raw = msg as Record<string, unknown>
+          const todos = raw.todos as TodoItem[] | undefined
+          if (todos && Array.isArray(todos)) {
+            onMessage({ type: "todo_update", todos })
+            break
+          }
+        }
+        onMessage({
+          type: "tool_use",
+          toolName: msg.tool_name,
+          toolInput: msg,
+        })
+        break
+      }
+
+      case "tool_result": {
+        onMessage({
+          type: "tool_result",
+          toolName: msg.tool_name,
+          toolResult: msg.content,
+        })
+        break
+      }
+
+      case "result": {
+        // result メッセージで完了
+        if (msg.is_error || msg.isError) {
+          onMessage({
+            type: "error",
+            error: msg.error || "Claude Code returned an error",
+          })
+        }
+        onMessage({ type: "done" })
+        break
+      }
+
+      // system, user, stream_event は表示に影響しないのでスキップ
+      default:
+        break
+    }
+  }
+
   if (child.stdout) {
     child.stdout.on("data", (data: Buffer) => {
       buffer += data.toString()
@@ -214,78 +326,15 @@ export function spawnClaudeCode(options: ClaudeCodeOptions): ChildProcess {
       buffer = lines.pop() || ""
 
       for (const line of lines) {
-        if (!line.trim()) continue
+        processLine(line)
+      }
+    })
 
-        let msg: CLIOutputMessage
-        try {
-          msg = JSON.parse(line) as CLIOutputMessage
-        } catch {
-          // JSON パース失敗は無視（npx のログなど）
-          continue
-        }
-
-        // session_id を抽出（最初に見つかったもの）
-        if (!extractedSessionId) {
-          const sid = extractSessionId(msg)
-          if (sid) {
-            extractedSessionId = sid
-            onMessage({ type: "session", sessionId: sid })
-          }
-        }
-
-        // メッセージタイプごとの処理
-        switch (msg.type) {
-          case "assistant": {
-            const text = extractTextFromContent(msg.message.content)
-            if (text) {
-              onMessage({ type: "text", content: text })
-            }
-            break
-          }
-
-          case "tool_use": {
-            // TodoWrite ツールの場合は todo_update として発行
-            if (msg.tool_name === "TodoWrite") {
-              const raw = msg as Record<string, unknown>
-              const todos = raw.todos as TodoItem[] | undefined
-              if (todos && Array.isArray(todos)) {
-                onMessage({ type: "todo_update", todos })
-                break
-              }
-            }
-            onMessage({
-              type: "tool_use",
-              toolName: msg.tool_name,
-              toolInput: msg,
-            })
-            break
-          }
-
-          case "tool_result": {
-            onMessage({
-              type: "tool_result",
-              toolName: msg.tool_name,
-              toolResult: msg.content,
-            })
-            break
-          }
-
-          case "result": {
-            // result メッセージで完了
-            if (msg.is_error || msg.isError) {
-              onMessage({
-                type: "error",
-                error: msg.error || "Claude Code returned an error",
-              })
-            }
-            onMessage({ type: "done" })
-            break
-          }
-
-          // system, user, stream_event は表示に影響しないのでスキップ
-          default:
-            break
-        }
+    // プロセス終了時にバッファに残った未処理行をパースする
+    child.stdout.on("end", () => {
+      if (buffer.trim()) {
+        processLine(buffer)
+        buffer = ""
       }
     })
   }
