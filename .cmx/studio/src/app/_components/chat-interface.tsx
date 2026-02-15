@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "./settings-dialog"
 import { CommandMenu, type CommandMetadata } from "./command-menu"
-import { AlertCircle, SendHorizontal, Terminal, Loader2, GitBranch, Plus, MessageSquareText, Archive, RotateCcw, FolderGit2 } from "lucide-react"
+import { AlertCircle, SendHorizontal, Terminal, Loader2, GitBranch, Plus, MessageSquareText, Archive, RotateCcw, FolderGit2, Square } from "lucide-react"
 import { TodoPanel } from "./todo-panel"
 import { DeployPanel } from "./deploy-panel"
 import type { TodoItem } from "@/lib/setup/claude-code-cli"
@@ -141,6 +141,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   const previousMessagesLengthRef = useRef(0)
   const shouldAutoScrollRef = useRef(true)
   const scrollRafRef = useRef<number | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // ============================================================
   // セッション管理
@@ -860,6 +861,10 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
       updateTask(targetTaskId, (t) => ({ ...t, status: "working" as const }))
     }
 
+    // AbortController を作成して保存（中止機能用）
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
     try {
       const response = await fetch("/api/setup/chat", {
         method: "POST",
@@ -868,6 +873,7 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
           message,
           sessionId: resumeSessionId ?? null,
         }),
+        signal: abortController.signal,
       })
 
       if (!response.ok) {
@@ -992,16 +998,36 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
         }
       }
     } catch (error) {
-      console.error("Chat error:", error)
-      scopedUpdateMessages((prev) => [
-        ...prev,
-        {
-          role: "system" as const,
-          content: "エラーが発生しました。もう一度お試しください。",
-        },
-      ])
+      // AbortError の場合はユーザーによる中止なのでエラーメッセージを表示しない
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log("Message sending was aborted by user")
+        scopedUpdateMessages((prev) => [
+          ...prev,
+          {
+            role: "system" as const,
+            content: "処理を中止しました",
+          },
+        ])
+      } else {
+        console.error("Chat error:", error)
+        scopedUpdateMessages((prev) => [
+          ...prev,
+          {
+            role: "system" as const,
+            content: "エラーが発生しました。もう一度お試しください。",
+          },
+        ])
+      }
     } finally {
       scopedUpdateChat((chat) => ({ ...chat, isLoading: false }))
+      abortControllerRef.current = null
+    }
+  }
+
+  const stopMessage = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
     }
   }
 
@@ -1014,12 +1040,12 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Shift + Enter: 改行（デフォルト動作）
-    if (e.shiftKey && e.key === "Enter") {
+    // Enter のみ: 改行（デフォルト動作）
+    if (e.key === "Enter" && !e.shiftKey) {
       return
     }
-    // Enter のみ: 送信
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Shift + Enter: 送信
+    if (e.shiftKey && e.key === "Enter") {
       e.preventDefault()
       if (input.trim()) {
         handleSubmit(e)
@@ -1439,22 +1465,36 @@ export function ChatInterface({ settingsOpen, onSettingsOpenChange }: ChatInterf
               onKeyDown={handleKeyDown}
               placeholder={!isAuthenticated || !envConfigured || !branchReady || tasks.length === 0 ? "System unavailable" : "Type instructions..."}
               className="bg-muted"
-              disabled={isLoading || !isAuthenticated || !envConfigured || !branchReady || tasks.length === 0}
+              disabled={!isAuthenticated || !envConfigured || !branchReady || tasks.length === 0}
               maxHeight={200}
             />
             <div className="flex items-center justify-between gap-2">
               {tasks.length > 0 && (
                 <CommandMenu onCommandSelect={handleCommandSelect} />
               )}
-              <Button
-                type="submit"
-                disabled={isLoading || !input.trim() || !isAuthenticated || !envConfigured || !branchReady || tasks.length === 0}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 ml-auto"
-              >
-                <SendHorizontal className="h-4 w-4" />
-              </Button>
+              {isLoading ? (
+                <Button
+                  type="button"
+                  onClick={stopMessage}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 ml-auto"
+                  title="処理を中止"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={!input.trim() || !isAuthenticated || !envConfigured || !branchReady || tasks.length === 0}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 ml-auto"
+                  title="送信"
+                >
+                  <SendHorizontal className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </form>
         </div>

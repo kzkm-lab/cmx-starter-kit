@@ -125,12 +125,9 @@ interface MessageEntryProps {
 }
 
 export function MessageEntryComponent({ entry, index }: MessageEntryProps) {
-  const [expanded, setExpanded] = useState(false)
-
   // ツールメッセージの場合
   if (entry.role === "tool") {
     const hasContent = entry.content && entry.content !== entry.toolName
-    const canExpand = hasContent && entry.content.length > 100
     const isError = entry.toolStatus === "error"
 
     // ステータスに応じたドットの色
@@ -154,44 +151,44 @@ export function MessageEntryComponent({ entry, index }: MessageEntryProps) {
         </div>
 
         <div className="flex-1 min-w-0 pb-1">
-          <button
-            onClick={() => canExpand && setExpanded(!expanded)}
-            className={cn(
-              "w-full flex items-center gap-2 text-left text-xs",
-              isError ? "text-red-400" : "text-foreground/70",
-              canExpand && "hover:text-foreground cursor-pointer"
-            )}
-          >
-            <span className="flex-shrink-0">{toolIcon}</span>
-            <span className="font-medium truncate">{entry.toolName || "Tool"}</span>
-            {canExpand && (
-              <ChevronDown
-                className={cn(
-                  "h-3 w-3 flex-shrink-0 transition-transform",
-                  expanded && "rotate-180"
+          {hasContent ? (
+            // コンテンツがある場合：折りたたみ可能（デフォルトで閉じている）
+            <details className="group">
+              <summary className="cursor-pointer flex items-center gap-2 text-left text-xs hover:text-foreground list-none">
+                <span className="flex-shrink-0">{toolIcon}</span>
+                <span className={cn("font-medium truncate", isError ? "text-red-400" : "text-foreground/70")}>
+                  {entry.toolName || "Tool"}
+                </span>
+                <ChevronDown className="h-3 w-3 flex-shrink-0 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-2">
+                {isError ? (
+                  // エラー結果 - 赤い背景のボックス
+                  <div className="p-3 rounded border bg-red-950/10 border-red-800/40">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <AlertCircle className="w-4 h-4 text-red-400" />
+                      <span className="text-xs font-medium text-red-300">エラー</span>
+                    </div>
+                    <div className="text-xs text-red-100 font-mono whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                      {entry.content}
+                    </div>
+                  </div>
+                ) : (
+                  // 通常の結果
+                  <div className="text-xs text-muted-foreground font-mono whitespace-pre-wrap max-h-[200px] overflow-y-auto border border-border rounded p-2 bg-secondary">
+                    {entry.content}
+                  </div>
                 )}
-              />
-            )}
-          </button>
-
-          {hasContent && (expanded || !canExpand) && (
-            isError ? (
-              // エラー結果 - 赤い背景のボックス
-              <div className="mt-2 p-3 rounded border bg-red-950/10 border-red-800/40">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <AlertCircle className="w-4 h-4 text-red-400" />
-                  <span className="text-xs font-medium text-red-300">エラー</span>
-                </div>
-                <div className="text-xs text-red-100 font-mono whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-                  {entry.content}
-                </div>
               </div>
-            ) : (
-              // 通常の結果
-              <div className="mt-2 text-xs text-muted-foreground font-mono whitespace-pre-wrap max-h-[200px] overflow-y-auto border border-border rounded p-2 bg-secondary">
-                {entry.content}
-              </div>
-            )
+            </details>
+          ) : (
+            // コンテンツがない場合：ツール名のみ表示
+            <div className="flex items-center gap-2 text-left text-xs">
+              <span className="flex-shrink-0">{toolIcon}</span>
+              <span className={cn("font-medium truncate", isError ? "text-red-400" : "text-foreground/70")}>
+                {entry.toolName || "Tool"}
+              </span>
+            </div>
           )}
         </div>
       </div>
