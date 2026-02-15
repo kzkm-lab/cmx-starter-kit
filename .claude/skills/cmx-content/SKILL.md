@@ -37,60 +37,62 @@ description: |
 
 ## Admin API でのコンテンツ作成
 
-SDK API エンドポイント: `POST /api/v1/sdk/manage/contents`
+CMX SDK CLIコマンドでコンテンツを作成します：
 
-```typescript
-const response = await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${CMX_API_KEY}`,
-  },
-  body: JSON.stringify({
-    title: "記事タイトル",
-    slug: "article-slug",
-    description: "記事の説明文",
-    mdx: "# 見出し\n\n本文...",
-    collectionId: "コレクションのUUID",
-  }),
-})
-// → { id: "uuid", slug: "article-slug" }
-// 初期ステータスは draft
+```bash
+npx cmx-sdk create-content --collection blog --json '{
+  "title": "記事タイトル",
+  "slug": "article-slug",
+  "description": "記事の説明文",
+  "mdx": "# 見出し\n\n本文..."
+}'
 ```
+
+または、ファイルから読み込む場合：
+
+```bash
+npx cmx-sdk create-content --collection blog --file content.json
+```
+
+コマンドの出力例：
+```json
+{
+  "id": "uuid",
+  "slug": "article-slug"
+}
+```
+
+初期ステータスは `draft` です。作成されたコンテンツIDを控えておいてください。
 
 ### レビューに送る場合（タスク完結時）
 
-```typescript
-// draft → review
-await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/request-review`, {
-  method: "POST",
-  headers: { "Authorization": `Bearer ${CMX_API_KEY}` },
-})
+コンテンツを作成した後、レビューステータスに変更：
+
+```bash
+npx cmx-sdk request-review-content --id {contentId}
 ```
+
+これにより、ステータスが `draft` → `review` に変更されます。
 
 ### 公開する場合（ユーザーが明示的に指示した場合のみ）
 
-公開には `review` ステータスが前提です。まだ `draft` の場合は `request-review` を先に実行してください。
+公開には `review` ステータスが前提です。まだ `draft` の場合は `request-review-content` を先に実行してください。
 
-```typescript
-// review → published
-await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/publish`, {
-  method: "POST",
-  headers: { "Authorization": `Bearer ${CMX_API_KEY}` },
-})
+```bash
+npx cmx-sdk publish-content --id {contentId}
 ```
 
-> **注意**: `publish` は `review` ステータスのコンテンツにのみ実行可能です。`draft` から直接 `publish` することはできません。
+これにより、ステータスが `review` → `published` に変更され、公開URLが返されます。
 
-### コレクション ID の取得
+> **注意**: `publish-content` は `review` ステータスのコンテンツにのみ実行可能です。`draft` から直接公開することはできません。
 
-```typescript
-const res = await fetch(`${CMX_API_URL}/api/v1/sdk/manage/collections`, {
-  headers: { "Authorization": `Bearer ${CMX_API_KEY}` },
-})
-const { collections } = await res.json()
-// collections[].id でコレクションUUIDを取得
+### コレクション一覧の確認
+
+```bash
+npx cmx-sdk list-collections
 ```
+
+このコマンドで、コレクションの slug や ID を確認できます。`create-content` コマンドでは `--collection` オプションに slug を指定すれば、自動的に ID に変換されます。
 
 ## データタイプのテストデータ
 
@@ -132,23 +134,21 @@ npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"TypeScript"
 
 #### 2. コンテンツに参照を設定
 
-コンテンツ作成後、SDK API で参照を設定:
+コンテンツ作成後、CLIコマンドで参照を設定:
 
-```typescript
-// PUT /api/v1/sdk/manage/contents/{contentId}/references
-await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/references`, {
-  method: "PUT",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${CMX_API_KEY}`,
-  },
-  body: JSON.stringify({
-    references: [
-      { fieldSlug: "categories", dataEntryIds: ["カテゴリエントリのUUID"] },
-      { fieldSlug: "tags", dataEntryIds: ["タグ1のUUID", "タグ2のUUID"] },
-    ],
-  }),
-})
+```bash
+npx cmx-sdk set-content-references --id {contentId} --json '{
+  "references": [
+    { "fieldSlug": "categories", "dataEntryIds": ["カテゴリエントリのUUID"] },
+    { "fieldSlug": "tags", "dataEntryIds": ["タグ1のUUID", "タグ2のUUID"] }
+  ]
+}'
+```
+
+または、ファイルから読み込む場合：
+
+```bash
+npx cmx-sdk set-content-references --id {contentId} --file references.json
 ```
 
 ## 変更後

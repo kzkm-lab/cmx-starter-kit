@@ -69,27 +69,29 @@ const html = await response.text()
 - 相対 URL は絶対 URL に変換
 - 画像は外部 URL のまま（後で Admin にアップロード可能）
 
-## ステップ 4: SDK API で投入
+## ステップ 4: CLIコマンドで投入
 
-```typescript
-for (const page of convertedPages) {
-  const response = await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${CMX_API_KEY}`,
-    },
-    body: JSON.stringify({
-      title: page.title,
-      slug: page.slug,
-      description: page.description,
-      mdx: page.mdx,
-      collectionId: page.collectionId,
-    }),
-  })
-  const { id } = await response.json()
-  console.log(`Created: ${page.title} (${id})`)
-}
+各ページのデータをJSONファイルに保存し、CLIコマンドで投入:
+
+```bash
+# 各ページごとにコンテンツを作成
+for page in convertedPages; do
+  npx cmx-sdk create-content --collection blog --json '{
+    "title": "'"$page.title"'",
+    "slug": "'"$page.slug"'",
+    "description": "'"$page.description"'",
+    "mdx": "'"$page.mdx"'"
+  }'
+done
+```
+
+または、JSONファイルから一括投入する場合：
+
+```bash
+# content1.json, content2.json などのファイルを作成しておき
+npx cmx-sdk create-content --collection blog --file content1.json
+npx cmx-sdk create-content --collection blog --file content2.json
+# ...
 ```
 
 ## ステップ 5: 確認・調整

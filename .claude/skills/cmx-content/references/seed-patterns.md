@@ -3,15 +3,15 @@
 ## 投入フロー
 
 ```
-1. コレクション一覧を取得（Admin API）
+1. コレクション一覧を取得（npx cmx-sdk list-collections）
 2. 各コレクションの type に合わせた記事を生成
-3. Admin API で draft として作成
-4. request-review でレビューステータスに変更（テストデータ投入はタスク完結型のため）
-5. ユーザーが「公開して」と指示した場合のみ publish で公開
+3. CLIコマンドで draft として作成（npx cmx-sdk create-content）
+4. request-review-content でレビューステータスに変更（テストデータ投入はタスク完結型のため）
+5. ユーザーが「公開して」と指示した場合のみ publish-content で公開
 6. フロントの開発サーバーで確認
 ```
 
-> **注意**: `publish` は `review` ステータスからのみ実行可能。`draft` から直接 `publish` はできない。
+> **注意**: `publish-content` は `review` ステータスからのみ実行可能。`draft` から直接公開はできない。
 > **重要**: テストデータ投入はタスク完結型のため `review` まで進める。公開は明示的な指示があった場合のみ。
 
 ## コレクション type 別のテスト記事
@@ -91,20 +91,13 @@ npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"CSS"}'
 
 テスト記事にカテゴリ1つ + タグ2つを設定:
 
-```typescript
-await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/references`, {
-  method: "PUT",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${CMX_API_KEY}`,
-  },
-  body: JSON.stringify({
-    references: [
-      { fieldSlug: "categories", dataEntryIds: [categoryId] },
-      { fieldSlug: "tags", dataEntryIds: [tagId1, tagId2] },
-    ],
-  }),
-})
+```bash
+npx cmx-sdk set-content-references --id {contentId} --json '{
+  "references": [
+    { "fieldSlug": "categories", "dataEntryIds": ["{categoryId}"] },
+    { "fieldSlug": "tags", "dataEntryIds": ["{tagId1}", "{tagId2}"] }
+  ]
+}'
 ```
 
 ## slug の命名規則
