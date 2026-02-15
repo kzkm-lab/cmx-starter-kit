@@ -5,6 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Force light color scheme to prevent gray iframe canvas */
+  color-scheme: only light;
+
   /* Strict White/Gray Corporate Theme */
   --background: 0 0% 100%; /* Pure White */
   --foreground: 222.2 84% 4.9%; /* Very Dark Slate (almost Black) */
@@ -85,10 +88,16 @@
   }
 }
 
+html {
+  background-color: #fff !important;
+  min-height: 100%;
+}
+
 body {
-  background-color: var(--color-background);
+  background-color: #fff !important;
   color: var(--color-foreground);
   font-family: var(--font-sans), var(--font-jp), sans-serif;
+  min-height: 100%;
 }
 
 .dark {
@@ -125,4 +134,15 @@ body {
 /* Editor caret styling */
 .editor-caret {
   caret-color: hsl(142 76% 36%); /* Green */
+}
+
+/* Disable backdrop-filter when in iframe to prevent gray background */
+.in-iframe header {
+  background-color: rgb(255 255 255 / 0.95) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.in-iframe .supports-\[backdrop-filter\]\:bg-white\/60 {
+  background-color: rgb(255 255 255 / 0.95) !important;
 }

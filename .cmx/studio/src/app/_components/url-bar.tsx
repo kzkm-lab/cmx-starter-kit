@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, ArrowRight, RefreshCw, Home } from "lucide-react"
+import { ArrowLeft, ArrowRight, RefreshCw, Home, Monitor, Tablet, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import type { ViewportSize } from "./preview-frame"
 
 interface UrlBarProps {
   url: string
@@ -12,6 +13,8 @@ interface UrlBarProps {
   onForward?: () => void
   onRefresh?: () => void
   onHome?: () => void
+  viewportSize?: ViewportSize
+  onViewportChange?: (size: ViewportSize) => void
 }
 
 /**
@@ -25,6 +28,8 @@ export function UrlBar({
   onForward,
   onRefresh,
   onHome,
+  viewportSize = "desktop",
+  onViewportChange,
 }: UrlBarProps) {
   const [editingUrl, setEditingUrl] = useState(url)
 
@@ -88,6 +93,39 @@ export function UrlBar({
           />
         </div>
       </form>
+
+      {/* ブレイクポイント切り替えボタン */}
+      {onViewportChange && (
+        <div className="flex items-center gap-1 border-l pl-2">
+          <Button
+            variant={viewportSize === "mobile" ? "default" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onViewportChange("mobile")}
+            title="スマホ"
+          >
+            <Smartphone className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewportSize === "tablet" ? "default" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onViewportChange("tablet")}
+            title="iPad"
+          >
+            <Tablet className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewportSize === "desktop" ? "default" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onViewportChange("desktop")}
+            title="ウェブ"
+          >
+            <Monitor className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

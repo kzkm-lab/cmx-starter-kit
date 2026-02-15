@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google"
 import "./globals.css"
 import { Header, Footer } from "@/components/layout"
+import { IframeDetector } from "@/components/iframe-detector"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansJP.variable} font-sans antialiased min-h-screen flex flex-col`}
       >
+        <IframeDetector />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

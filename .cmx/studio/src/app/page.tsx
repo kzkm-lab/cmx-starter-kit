@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { PreviewFrame } from "./_components/preview-frame"
+import { PreviewFrame, type ViewportSize } from "./_components/preview-frame"
 import { UrlBar } from "./_components/url-bar"
 import { ChatInterface } from "./_components/chat-interface"
 import { AuthStatus } from "./_components/auth-status"
@@ -20,21 +20,12 @@ const ADMIN_URL = "https://stg.cmx-ai.org"
 export default function SetupPage() {
   const [currentUrl, setCurrentUrl] = useState(DEFAULT_SITE_URL)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [viewportSize, setViewportSize] = useState<ViewportSize>("desktop")
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // URL バーからのナビゲーション
   const handleNavigate = (url: string) => {
     setCurrentUrl(url)
-    if (iframeRef.current?.contentWindow) {
-      try {
-        iframeRef.current.contentWindow.location.href = url
-      } catch (e) {
-        // クロスオリジンの場合は src を変更
-        if (iframeRef.current) {
-          iframeRef.current.src = url
-        }
-      }
-    }
   }
 
   // iframe からの URL 変更通知
@@ -42,7 +33,7 @@ export default function SetupPage() {
     setCurrentUrl(url)
   }
 
-  // ブラウザ操作（戻る・進む）
+  // ブラウザ操作
   const handleBack = () => {
     iframeRef.current?.contentWindow?.history.back()
   }
@@ -52,7 +43,14 @@ export default function SetupPage() {
   }
 
   const handleRefresh = () => {
-    iframeRef.current?.contentWindow?.location.reload()
+    try {
+      iframeRef.current?.contentWindow?.location.reload()
+    } catch (e) {
+      // クロスオリジンの場合は src を再設定
+      if (iframeRef.current) {
+        iframeRef.current.src = iframeRef.current.src
+      }
+    }
   }
 
   const handleHome = () => {
@@ -100,12 +98,17 @@ export default function SetupPage() {
               onForward={handleForward}
               onRefresh={handleRefresh}
               onHome={handleHome}
+              viewportSize={viewportSize}
+              onViewportChange={setViewportSize}
             />
-            {/* iframe プレビュー */}
+            {/* プレビューウィンドウ */}
             <div className="flex-1">
               <PreviewFrame
+                ref={iframeRef}
+                key={currentUrl}
                 initialUrl={currentUrl}
                 onUrlChange={handleUrlChange}
+                viewportSize={viewportSize}
               />
             </div>
           </div>
