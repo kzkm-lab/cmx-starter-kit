@@ -20,15 +20,15 @@ cmx-starter-kit/
 
 ## 共通ルール・アーキテクチャ
 
-@AGENTS.md
+@../AGENTS.md
 
 ## サイト設定
 
-@cmx/site-config.md
+@../cmx/site-config.md
 
 ## 執筆ルール（ライター向け）
 
-@workflows/style-guide.md
+@../workflows/style-guide.md
 
 ## Claude Code ワークフロー
 
