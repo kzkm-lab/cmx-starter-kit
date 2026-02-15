@@ -88,7 +88,7 @@ npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"CSS"}'
 テスト記事にカテゴリ1つ + タグ2つを設定:
 
 ```typescript
-await fetch(`${CMX_API_URL}/api/v1/admin/contents/${contentId}/references`, {
+await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/references`, {
   method: "PUT",
   headers: {
     "Content-Type": "application/json",

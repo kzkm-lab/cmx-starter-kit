@@ -69,11 +69,11 @@ const html = await response.text()
 - 相対 URL は絶対 URL に変換
 - 画像は外部 URL のまま（後で Admin にアップロード可能）
 
-## ステップ 4: Admin API で投入
+## ステップ 4: SDK API で投入
 
 ```typescript
 for (const page of convertedPages) {
-  const response = await fetch(`${CMX_API_URL}/api/v1/admin/posts`, {
+  const response = await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

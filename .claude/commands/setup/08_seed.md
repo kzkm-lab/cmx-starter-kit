@@ -49,9 +49,9 @@ site-config.md のトーン・style-guide.md の文体に合わせて記事を�
 - 登録済みコンポーネントがあれば 1 件はコンポーネントを含む記事にする
 - slug は `test-` プレフィックスを付ける
 
-### 4. Admin API で投入
+### 4. SDK API で投入
 
-各記事を `POST /api/v1/admin/posts` で作成 → `POST /api/v1/admin/posts/:id/publish` で公開。
+各記事を `POST /api/v1/sdk/manage/contents` で作成 → `POST /api/v1/sdk/manage/contents/:id/publish` で公開。
 
 ### 5. 確認
 

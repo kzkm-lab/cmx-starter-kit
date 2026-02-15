@@ -101,38 +101,38 @@ const { content } = await renderMdx(item.mdx, references)
 
 ## コレクション付属データタイプ API
 
-### コレクションのデータタイプ一覧（Admin API）
+### コレクションのデータタイプ一覧（SDK API）
 
 ```
-GET /api/v1/admin/collections/{slug}/data-types
+GET /api/v1/sdk/manage/collections/{slug}/data-types
 ```
 
-### コレクションにデータタイプを追加（Admin API）
+### コレクションにデータタイプを追加（SDK API）
 
 ```
-POST /api/v1/admin/collections/{slug}/data-types
+POST /api/v1/sdk/manage/collections/{slug}/data-types
 Body: { "presetSlug": "categories" }  // プリセットから追加
 Body: { "slug": "custom", "name": "カスタム", "referenceType": "single", "fields": [...] }  // カスタム
 ```
 
-### コレクションからデータタイプを削除（Admin API）
+### コレクションからデータタイプを削除（SDK API）
 
 ```
-DELETE /api/v1/admin/collections/{slug}/data-types/{dtSlug}
+DELETE /api/v1/sdk/manage/collections/{slug}/data-types/{dtSlug}
 ```
 
-### プリセット一覧（Admin API）
+### プリセット一覧（SDK API）
 
 ```
-GET /api/v1/admin/collection-presets?type=post
+GET /api/v1/sdk/manage/collection-presets?type=post
 → { "recommended": [...], "others": [...] }
 ```
 
-### コンテンツの参照取得/設定（Admin API）
+### コンテンツの参照取得/設定（SDK API）
 
 ```
-GET  /api/v1/admin/contents/{id}/references
-PUT  /api/v1/admin/contents/{id}/references
+GET  /api/v1/sdk/manage/contents/{id}/references
+PUT  /api/v1/sdk/manage/contents/{id}/references
 Body: { "references": [{ "fieldSlug": "categories", "dataEntryIds": ["uuid"] }] }
 ```
 

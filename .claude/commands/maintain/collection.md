@@ -74,7 +74,7 @@ npx cmx-sdk create-data-entry --type-slug {slug}-categories --json '{"name":"カ
 ```
 
 Admin 側で 2-3 件のコンテンツを作成し「公開」にするよう案内。
-コンテンツ作成後、必要に応じて参照を設定（Admin API `PUT /contents/:id/references`）。
+コンテンツ作成後、必要に応じて参照を設定（SDK API `PUT /api/v1/sdk/manage/contents/:id/references`）。
 
 ### Step 3: コード再生成 & ページ scaffold
 

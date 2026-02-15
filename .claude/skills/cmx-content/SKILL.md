@@ -27,10 +27,10 @@ description: |
 
 ## Admin API でのコンテンツ作成
 
-Admin API エンドポイント: `POST /api/v1/admin/posts`
+SDK API エンドポイント: `POST /api/v1/sdk/manage/contents`
 
 ```typescript
-const response = await fetch(`${CMX_API_URL}/api/v1/admin/posts`, {
+const response = await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
@@ -51,7 +51,7 @@ const response = await fetch(`${CMX_API_URL}/api/v1/admin/posts`, {
 ### 公開する場合
 
 ```typescript
-await fetch(`${CMX_API_URL}/api/v1/admin/posts/${postId}/publish`, {
+await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/publish`, {
   method: "POST",
   headers: { "Authorization": `Bearer ${CMX_API_KEY}` },
 })
@@ -60,7 +60,7 @@ await fetch(`${CMX_API_URL}/api/v1/admin/posts/${postId}/publish`, {
 ### コレクション ID の取得
 
 ```typescript
-const res = await fetch(`${CMX_API_URL}/api/v1/admin/collections`, {
+const res = await fetch(`${CMX_API_URL}/api/v1/sdk/manage/collections`, {
   headers: { "Authorization": `Bearer ${CMX_API_KEY}` },
 })
 const { collections } = await res.json()
@@ -107,11 +107,11 @@ npx cmx-sdk create-data-entry --type-slug blog-tags --json '{"name":"TypeScript"
 
 #### 2. コンテンツに参照を設定
 
-コンテンツ作成後、Admin API で参照を設定:
+コンテンツ作成後、SDK API で参照を設定:
 
 ```typescript
-// PUT /api/v1/admin/contents/{contentId}/references
-await fetch(`${CMX_API_URL}/api/v1/admin/contents/${contentId}/references`, {
+// PUT /api/v1/sdk/manage/contents/{contentId}/references
+await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/references`, {
   method: "PUT",
   headers: {
     "Content-Type": "application/json",

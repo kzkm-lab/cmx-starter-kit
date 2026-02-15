@@ -88,4 +88,4 @@ cmx-starter-kit/
 | cmx-style | 「スタイル変更」「デザイン」「色」「フォント」 | CSS/レイアウト変更パターン、site-config との連動 |
 | cmx-seo | 「SEO」「OGP」「sitemap」「メタデータ」 | metadata, sitemap.ts, robots.ts, JSON-LD |
 | cmx-cache | 「キャッシュ」「パフォーマンス」「ISR」 | force-dynamic → ISR 切り替え、CACHE_TAGS、リバリデーション |
-| cmx-content | 「テストデータ」「記事を投入」「移行」「シード」 | Admin API でのコンテンツ作成、MDX テンプレート、スクレイピング→変換 |
+| cmx-content | 「テストデータ」「記事を投入」「移行」「シード」 | SDK API でのコンテンツ作成、MDX テンプレート、スクレイピング→変換 |
