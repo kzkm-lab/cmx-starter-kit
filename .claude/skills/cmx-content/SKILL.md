@@ -25,6 +25,16 @@ description: |
 
 既存サイトのページをスクレイピング → MDX に変換 → Admin API で投入。詳細は [references/migration-patterns.md](references/migration-patterns.md) を参照。
 
+## ステータス運用ルール
+
+コンテンツ作成後のステータスは、タスクの性質に応じて使い分ける。**明示的に「公開して」と指示されない限り、公開（publish）は行わない。**
+
+| タスクの性質 | 保存先ステータス | 例 |
+|------------|----------------|-----|
+| 案出し・探索的なタスク | **draft**（下書き） | 「いくつか記事のアイデアを出して」「テスト記事を作って」 |
+| タスク内で記事作成が完結する場合 | **review**（レビュー依頼） | 「新しく記事を作成して」「移行記事を投入して」 |
+| ユーザーが明示的に公開を指示した場合のみ | **published**（公開） | 「公開して」「publishして」 |
+
 ## Admin API でのコンテンツ作成
 
 SDK API エンドポイント: `POST /api/v1/sdk/manage/contents`
@@ -48,14 +58,29 @@ const response = await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents`, {
 // 初期ステータスは draft
 ```
 
-### 公開する場合
+### レビューに送る場合（タスク完結時）
 
 ```typescript
+// draft → review
+await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/request-review`, {
+  method: "POST",
+  headers: { "Authorization": `Bearer ${CMX_API_KEY}` },
+})
+```
+
+### 公開する場合（ユーザーが明示的に指示した場合のみ）
+
+公開には `review` ステータスが前提です。まだ `draft` の場合は `request-review` を先に実行してください。
+
+```typescript
+// review → published
 await fetch(`${CMX_API_URL}/api/v1/sdk/manage/contents/${contentId}/publish`, {
   method: "POST",
   headers: { "Authorization": `Bearer ${CMX_API_KEY}` },
 })
 ```
+
+> **注意**: `publish` は `review` ステータスのコンテンツにのみ実行可能です。`draft` から直接 `publish` することはできません。
 
 ### コレクション ID の取得
 
